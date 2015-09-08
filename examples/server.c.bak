@@ -58,7 +58,7 @@ handle_sigint(int signum) {
 
 #define OEM_DEFINED 		1
 #define OEM_THREAD			1
-#define OEM_MUTEX				1
+#define OEM_MUTEX				0
 
 #if OEM_THREAD
 

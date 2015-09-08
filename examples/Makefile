@@ -21,11 +21,11 @@ PROGRAMS:=coap-server coap-client rd #etsi_iot_01 tiny
 SOURCES:= tiny.c client.c server.c rd.c etsi_iot_01.c
 OBJECTS:= $(patsubst %.c, %.o, $(SOURCES))
 #CFLAGS:=-g -Wall -ansi -pedantic -I..
-CFLAGS:=-g -Wall -g -O2
+CFLAGS:=-g -Wall -g -O2 
 CPPFLAGS:=-I$(top_srcdir)  -DWITH_POSIX
 DISTDIR?=$(top_builddir)/libcoap-4.1.2
 FILES:=Makefile.in $(SOURCES)
-LDFLAGS:=-L$(top_builddir)
+LDFLAGS:=-L$(top_builddir) -lpthread
 LDLIBS:=-lcoap 
 libcoap =$(top_builddir)/libcoap.a
 
