@@ -56,9 +56,10 @@ handle_sigint(int signum) {
 #define INDEX "This is a test server made with libcoap (see http://libcoap.sf.net)\n" \
    	      "Copyright (C) 2010--2013 Olaf Bergmann <bergmann@tzi.org>\n\n"
 
-#define OEM_DEFINED 		1
-#define OEM_THREAD			1
-#define OEM_MUTEX				1
+#define OEM_DEFINED 			1
+#define OEM_THREAD				1
+#define OEM_MUTEX					1
+#define OEM_MUTEX_DELAY		(10*1000)		/* 10ms */
 
 #if OEM_THREAD
 
@@ -70,7 +71,7 @@ void *pthread_func(void *arg)
 {
 	//coap_context_t *ctx = (coap_context_t *)arg; 
 	
-	printf("%s:+++\n", __func__);
+	//printf("%s:+++\n", __func__);
 	
 	coap_read((coap_context_t *)arg);
 	
@@ -110,15 +111,16 @@ hnd_get_time(coap_context_t  *ctx, struct coap_resource_t *resource,
   size_t len;
   time_t now;
   coap_tick_t t;
-  
-#if OEM_MUTEX
+
+#if OEM_DEFINED
 	struct timeval timeStart, timeEnd, timeDiff;
 	gettimeofday(&timeStart, NULL);
+#endif //OEM_DEFINED
+#if OEM_MUTEX
 	pthread_mutex_lock(&m_lock);
-	printf("%s:---:%ld sec %ld usec\n", __func__, timeStart.tv_sec, timeStart.tv_usec);
 #endif	//OEM_MUTEX	
 #if OEM_DEFINED
-	sleep(2);
+	usleep(OEM_MUTEX_DELAY);
 #endif //OEM_DEFINED
   /* FIXME: return time, e.g. in human-readable by default and ticks
    * when query ?ticks is given. */
@@ -167,6 +169,8 @@ hnd_get_time(coap_context_t  *ctx, struct coap_resource_t *resource,
   }
 #if OEM_MUTEX
 	pthread_mutex_unlock(&m_lock);
+#endif //OEM_MUTEX
+#if OEM_DEFINED
 	gettimeofday(&timeEnd, NULL);  
 	timeDiff.tv_sec  = timeEnd.tv_sec  - timeStart.tv_sec;
 	timeDiff.tv_usec = timeEnd.tv_usec - timeStart.tv_usec;
@@ -175,8 +179,11 @@ hnd_get_time(coap_context_t  *ctx, struct coap_resource_t *resource,
 	    timeDiff.tv_sec  = timeDiff.tv_sec  - 1;
 	    timeDiff.tv_usec = timeDiff.tv_usec + 1000000;
 	}	
-	printf("%s:---:%ld sec %ld usec\n", __func__, timeDiff.tv_sec, timeDiff.tv_usec);
-#endif   //OEM_MUTEX
+	printf("\n###S(%ld.%06ld)-E(%ld.%06ld)=D(%ld.%06ld)\n", 
+		timeStart.tv_sec, timeStart.tv_usec,
+		timeEnd.tv_sec, timeEnd.tv_usec,
+		timeDiff.tv_sec, timeDiff.tv_usec);
+#endif //OEM_MUTEX
   
 }
 
@@ -475,8 +482,7 @@ main(int argc, char **argv) {
       if ( FD_ISSET( ctx->sockfd, &readfds ) ) {
 #if OEM_THREAD
 	pthread_create(&ptId, NULL, pthread_func, (void *)ctx);
-	//sleep(1);
-	usleep(5000);
+	usleep(1);
 #else      	
 	coap_read( ctx );	/* read received data */
 #endif	//OEM_THREAD
