@@ -1268,7 +1268,10 @@ main(int argc, char **argv) {
 	    timeDiff.tv_sec  = timeDiff.tv_sec  - 1;
 	    timeDiff.tv_usec = timeDiff.tv_usec + 1000000;
 	}
-	printf("%s:---:%ld sec %ld usec\n", __func__, timeDiff.tv_sec, timeDiff.tv_usec);
+	printf(":%ld.%06ld:%ld.%06ld:%ld.%06ld", 
+		timeStart.tv_sec, timeStart.tv_usec,
+		timeEnd.tv_sec, timeEnd.tv_usec,
+		timeDiff.tv_sec, timeDiff.tv_usec);
 #endif //#if OEM_DEFINED
   
 

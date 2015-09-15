@@ -60,6 +60,7 @@ handle_sigint(int signum) {
 #define OEM_THREAD				1
 #define OEM_MUTEX					1
 #define OEM_MUTEX_DELAY		(10*1000)		/* 10ms */
+#define OEM_STRING				"minjinsong@hotmail.com"
 
 #if OEM_THREAD
 
@@ -99,6 +100,54 @@ hnd_get_index(coap_context_t  *ctx, struct coap_resource_t *resource,
     
   coap_add_data(response, strlen(INDEX), (unsigned char *)INDEX);
 }
+
+#if OEM_DEFINED
+void 
+hnd_get_test(coap_context_t  *ctx, struct coap_resource_t *resource,
+	     const coap_endpoint_t *local_interface,
+	     coap_address_t *peer, coap_pdu_t *request, str *token,
+	     coap_pdu_t *response) 
+{
+	struct timeval timeStart, timeEnd, timeDiff;
+	gettimeofday(&timeStart, NULL);
+
+#if OEM_MUTEX
+	pthread_mutex_lock(&m_lock);
+#endif	//OEM_MUTEX	
+
+	usleep(OEM_MUTEX_DELAY);
+
+  unsigned char buf[3];
+
+  response->hdr->code = COAP_RESPONSE_CODE(205);
+
+  coap_add_option(response, COAP_OPTION_CONTENT_TYPE,
+	  coap_encode_var_bytes(buf, COAP_MEDIATYPE_TEXT_PLAIN), buf);
+
+  coap_add_option(response, COAP_OPTION_MAXAGE,
+	  coap_encode_var_bytes(buf, 0x2ffff), buf);
+    
+  coap_add_data(response, strlen(OEM_STRING), (unsigned char *)OEM_STRING);	
+	
+
+#if OEM_MUTEX
+	pthread_mutex_unlock(&m_lock);
+#endif //OEM_MUTEX
+
+	gettimeofday(&timeEnd, NULL);  
+	timeDiff.tv_sec  = timeEnd.tv_sec  - timeStart.tv_sec;
+	timeDiff.tv_usec = timeEnd.tv_usec - timeStart.tv_usec;
+	if( timeDiff.tv_usec < 0 ) 
+	{
+	    timeDiff.tv_sec  = timeDiff.tv_sec  - 1;
+	    timeDiff.tv_usec = timeDiff.tv_usec + 1000000;
+	}	
+	printf(":%ld.%06ld:%ld.%06ld:%ld.%06ld\n", 
+		timeStart.tv_sec, timeStart.tv_usec,
+		timeEnd.tv_sec, timeEnd.tv_usec,
+		timeDiff.tv_sec, timeDiff.tv_usec);
+}
+#endif	//#if OEM_DEFINED
 
 void 
 hnd_get_time(coap_context_t  *ctx, struct coap_resource_t *resource,
@@ -340,6 +389,13 @@ init_resources(coap_context_t *ctx) {
   coap_add_attr(r, (unsigned char *)"ct", 2, (unsigned char *)"0", 1, 0);
   coap_add_resource(ctx, r);
 #endif /* WITHOUT_ASYNC */
+#if OEM_DEFINED
+  r = coap_resource_init((unsigned char *)"test", 4, 0);
+  coap_register_handler(r, COAP_REQUEST_GET, hnd_get_test);
+  coap_add_attr(r, (unsigned char *)"ct", 2, (unsigned char *)"0", 1, 0);
+  coap_add_attr(r, (unsigned char *)"title", 5, (unsigned char *)"\"minin7.song@samsung.com\"", 16, 0);  
+  coap_add_resource(ctx, r);
+#endif //#if OEM_DEFINED
 }
 
 void
