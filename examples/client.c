@@ -6,7 +6,8 @@
  * README for terms of use. 
  */
  
-#define OEM_DEFINED			1 
+#define OEM_DEFINED				1
+#define OEM_RETRANSMIT		1
 
 #include "config.h"
 
@@ -61,6 +62,11 @@ unsigned int obs_seconds = 30;	/* default observe time */
 coap_tick_t obs_wait = 0;	/* timeout for current subscription */
 
 #define min(a,b) ((a) < (b) ? (a) : (b))
+	
+#if OEM_DEFINED
+static int gInterval = 0;
+static int gLoopCnt = 1;
+#endif	//#if OEM_DEFINED
 
 static inline void
 set_timeout(coap_tick_t *timer, const unsigned int seconds) {
@@ -1029,8 +1035,16 @@ main(int argc, char **argv) {
   coap_log_t log_level = LOG_WARNING;
   coap_tid_t tid = COAP_INVALID_TID;
 
-  while ((opt = getopt(argc, argv, "Na:b:e:f:g:m:p:s:t:o:v:A:B:O:P:T:")) != -1) {
+  while ((opt = getopt(argc, argv, "Na:b:e:f:g:m:p:s:t:o:v:A:B:O:P:T:i:l:")) != -1) {
     switch (opt) {
+#if OEM_DEFINED
+		case 'i' :	/* interval - 0:default as 0ms, 1~100(ms)*/
+			gInterval = atoi(optarg);
+			break;
+		case 'l' :	/* loop count - 0:default as 10*/
+			gLoopCnt = atoi(optarg);
+			break;
+#endif	//#if OEM_DEFINED
     case 'a' :
       strncpy(node_str, optarg, NI_MAXHOST-1);
       node_str[NI_MAXHOST - 1] = '\0';
@@ -1133,7 +1147,21 @@ main(int argc, char **argv) {
   dst.addr.sin.sin_port = htons(port);
 
   /* add Uri-Host if server address differs from uri.host */
-  
+#if OEM_DEFINED
+int loop = 0;
+int random = 0;
+srand(time(NULL));
+while(loop++ < gLoopCnt)
+{	
+	random = rand()%500;
+	printf("random=%d\n", random);
+	//usleep(gInterval*1000);
+	usleep(random*1000);
+	
+	struct timeval timeStart, timeEnd, timeDiff;
+	gettimeofday(&timeStart, NULL);
+#endif //OEM_DEFINED  
+
   switch (dst.addr.sa.sa_family) {
   case AF_INET: 
     addrptr = &dst.addr.sin.sin_addr;
@@ -1158,7 +1186,7 @@ main(int argc, char **argv) {
 
   coap_register_option(ctx, COAP_OPTION_BLOCK2);
   coap_register_response_handler(ctx, message_handler);
-
+ 
   /* join multicast group if requested at command line */
   if (group)
     join(ctx, group);
@@ -1189,12 +1217,11 @@ main(int argc, char **argv) {
     coap_show_pdu(pdu);
   }
 #endif
-
-#if OEM_DEFINED
+//#if OEM_DEFINED
+#if 0
 	struct timeval timeStart, timeEnd, timeDiff;
 	gettimeofday(&timeStart, NULL);
-#endif //OEM_DEFINED
-
+#endif //OEM_DEFINED  
   if (pdu->hdr->type == COAP_MESSAGE_CON)
     tid = coap_send_confirmed(ctx, ctx->endpoint, &dst, pdu);
   else 
@@ -1211,13 +1238,13 @@ main(int argc, char **argv) {
     FD_SET( ctx->sockfd, &readfds );
 
     nextpdu = coap_peek_next( ctx );
-
+#if OEM_RETRANSMIT
     coap_ticks(&now);
     while (nextpdu && nextpdu->t <= now - ctx->sendqueue_basetime) {
       coap_retransmit( ctx, coap_pop_next( ctx ));
       nextpdu = coap_peek_next( ctx );
     }
-
+#endif	//#if OEM_RETRANSMIT
     if (nextpdu && nextpdu->t < min(obs_wait ? obs_wait : max_wait, max_wait) - now) { 
       /* set timeout if there is a pdu to send */
       tv.tv_usec = ((nextpdu->t) % COAP_TICKS_PER_SECOND) * 1000000 / COAP_TICKS_PER_SECOND;
@@ -1268,10 +1295,11 @@ main(int argc, char **argv) {
 	    timeDiff.tv_sec  = timeDiff.tv_sec  - 1;
 	    timeDiff.tv_usec = timeDiff.tv_usec + 1000000;
 	}
-	printf(":%ld.%06ld:%ld.%06ld:%ld.%06ld", 
+	printf(" ;%ld.%06ld ;%ld.%06ld ;%ld.%06ld\n", 
 		timeStart.tv_sec, timeStart.tv_usec,
 		timeEnd.tv_sec, timeEnd.tv_usec,
 		timeDiff.tv_sec, timeDiff.tv_usec);
+}	//while
 #endif //#if OEM_DEFINED
   
 

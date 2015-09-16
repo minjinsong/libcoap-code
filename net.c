@@ -698,7 +698,6 @@ coap_send_confirmed(coap_context_t *context,
   node->timeout = COAP_DEFAULT_RESPONSE_TIMEOUT * COAP_TICKS_PER_SECOND +
     (COAP_DEFAULT_RESPONSE_TIMEOUT >> 1) *
     ((COAP_TICKS_PER_SECOND * (r & 0xFF)) >> 8);
-
   node->local_if = *local_interface;
   memcpy(&node->remote, dst, sizeof(coap_address_t));
   node->pdu = pdu;

@@ -104,6 +104,8 @@ hnd_get_index(coap_context_t  *ctx, struct coap_resource_t *resource,
 }
 
 #if OEM_DEFINED
+FILE *file; 
+	
 void 
 hnd_get_test(coap_context_t  *ctx, struct coap_resource_t *resource,
 	     const coap_endpoint_t *local_interface,
@@ -150,7 +152,8 @@ hnd_get_test(coap_context_t  *ctx, struct coap_resource_t *resource,
 	if( timeWait.tv_usec < 0 ) {timeWait.tv_sec=timeWait.tv_sec-1; timeWait.tv_usec=timeWait.tv_usec + 1000000;	}	
 	if( timeProcess.tv_usec < 0 ) {timeProcess.tv_sec=timeProcess.tv_sec-1; timeProcess.tv_usec=timeProcess.tv_usec + 1000000;	}	
 		
-	printf(";%d ;%ld.%06ld; %ld.%06ld; %ld.%06ld; %ld.%06ld; %ld.%06ld; %ld.%06ld\n", 
+	//printf(";%d ;%ld.%06ld; %ld.%06ld; %ld.%06ld; %ld.%06ld; %ld.%06ld; %ld.%06ld\n", 
+	fprintf(file, ";%d ;%ld.%06ld; %ld.%06ld; %ld.%06ld; %ld.%06ld; %ld.%06ld; %ld.%06ld\n", 
 		++g_cnt,
 		timeRecv.tv_sec, timeRecv.tv_usec,
 		timeStart.tv_sec, timeStart.tv_usec,
@@ -484,6 +487,8 @@ main(int argc, char **argv) {
   coap_log_t log_level = LOG_WARNING;
   
 #if OEM_DEFINED
+	file = fopen("/tmp/log.txt", "w+");
+	
 	pthread_t ptId = 0;
 	if(pthread_mutex_init(&m_lock, NULL) != 0) 
 	{
@@ -573,7 +578,10 @@ main(int argc, char **argv) {
     coap_check_notify(ctx);
 #endif /* WITHOUT_OBSERVE */
   }
-
+  
+#if OEM_DEFINED
+	fclose(file);
+#endif	//#if OEM_DEFINED
   coap_free_context( ctx );
 
   return 0;
