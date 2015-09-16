@@ -59,7 +59,7 @@ handle_sigint(int signum) {
 #define OEM_DEFINED 			1
 #define OEM_THREAD				1
 #define OEM_MUTEX					1
-#define OEM_MUTEX_DELAY		(10*1000)		/* 10ms */
+#define OEM_MUTEX_DELAY		(1*1000)		/* 10ms */
 #define OEM_STRING				"minjinsong@hotmail.com"
 
 #if OEM_THREAD
@@ -108,12 +108,15 @@ hnd_get_test(coap_context_t  *ctx, struct coap_resource_t *resource,
 	     coap_address_t *peer, coap_pdu_t *request, str *token,
 	     coap_pdu_t *response) 
 {
-	struct timeval timeStart, timeEnd, timeDiff;
-	gettimeofday(&timeStart, NULL);
+	struct timeval timeRecv, timeStart, timeEnd;
+	struct timeval timeWait, timeProcess, timeTotal;
+	gettimeofday(&timeRecv, NULL);
 
 #if OEM_MUTEX
 	pthread_mutex_lock(&m_lock);
 #endif	//OEM_MUTEX	
+
+	gettimeofday(&timeStart, NULL);
 
 	usleep(OEM_MUTEX_DELAY);
 
@@ -135,17 +138,24 @@ hnd_get_test(coap_context_t  *ctx, struct coap_resource_t *resource,
 #endif //OEM_MUTEX
 
 	gettimeofday(&timeEnd, NULL);  
-	timeDiff.tv_sec  = timeEnd.tv_sec  - timeStart.tv_sec;
-	timeDiff.tv_usec = timeEnd.tv_usec - timeStart.tv_usec;
-	if( timeDiff.tv_usec < 0 ) 
-	{
-	    timeDiff.tv_sec  = timeDiff.tv_sec  - 1;
-	    timeDiff.tv_usec = timeDiff.tv_usec + 1000000;
-	}	
-	printf(":%ld.%06ld:%ld.%06ld:%ld.%06ld\n", 
+	timeTotal.tv_sec  = timeEnd.tv_sec  - timeRecv.tv_sec;
+	timeTotal.tv_usec = timeEnd.tv_usec - timeRecv.tv_usec;
+	timeWait.tv_sec  = timeStart.tv_sec  - timeRecv.tv_sec;
+	timeWait.tv_usec = timeStart.tv_usec - timeRecv.tv_usec;
+	timeProcess.tv_sec  = timeEnd.tv_sec  - timeStart.tv_sec;
+	timeProcess.tv_usec = timeEnd.tv_usec - timeStart.tv_usec;
+	if( timeTotal.tv_usec < 0 ) {timeTotal.tv_sec=timeTotal.tv_sec-1; timeTotal.tv_usec=timeTotal.tv_usec + 1000000;	}	
+	if( timeWait.tv_usec < 0 ) {timeWait.tv_sec=timeWait.tv_sec-1; timeWait.tv_usec=timeWait.tv_usec + 1000000;	}	
+	if( timeProcess.tv_usec < 0 ) {timeProcess.tv_sec=timeProcess.tv_sec-1; timeProcess.tv_usec=timeProcess.tv_usec + 1000000;	}	
+		
+	printf(";%ld.%06ld; %ld.%06ld; %ld.%06ld; %ld.%06ld; %ld.%06ld; %ld.%06ld\n", 
+		timeRecv.tv_sec, timeRecv.tv_usec,
 		timeStart.tv_sec, timeStart.tv_usec,
 		timeEnd.tv_sec, timeEnd.tv_usec,
-		timeDiff.tv_sec, timeDiff.tv_usec);
+		timeTotal.tv_sec, timeTotal.tv_usec,
+		timeWait.tv_sec, timeWait.tv_usec,
+		timeProcess.tv_sec, timeProcess.tv_usec
+		);
 }
 #endif	//#if OEM_DEFINED
 
