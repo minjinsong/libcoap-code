@@ -59,10 +59,12 @@ handle_sigint(int signum) {
 #define OEM_DEFINED 			1
 #define OEM_THREAD				1
 #define OEM_MUTEX					1
-#define OEM_MUTEX_DELAY		(1*1000)		/* 10ms */
+#define OEM_MUTEX_DELAY		(10*1000)		/* 10ms */
 #define OEM_STRING				"minjinsong@hotmail.com"
 
 #if OEM_THREAD
+
+static int g_cnt = 0;
 
 #include <pthread.h>
 
@@ -148,7 +150,8 @@ hnd_get_test(coap_context_t  *ctx, struct coap_resource_t *resource,
 	if( timeWait.tv_usec < 0 ) {timeWait.tv_sec=timeWait.tv_sec-1; timeWait.tv_usec=timeWait.tv_usec + 1000000;	}	
 	if( timeProcess.tv_usec < 0 ) {timeProcess.tv_sec=timeProcess.tv_sec-1; timeProcess.tv_usec=timeProcess.tv_usec + 1000000;	}	
 		
-	printf(";%ld.%06ld; %ld.%06ld; %ld.%06ld; %ld.%06ld; %ld.%06ld; %ld.%06ld\n", 
+	printf(";%d ;%ld.%06ld; %ld.%06ld; %ld.%06ld; %ld.%06ld; %ld.%06ld; %ld.%06ld\n", 
+		++g_cnt,
 		timeRecv.tv_sec, timeRecv.tv_usec,
 		timeStart.tv_sec, timeStart.tv_usec,
 		timeEnd.tv_sec, timeEnd.tv_usec,

@@ -251,6 +251,7 @@ coap_show_pdu(const coap_pdu_t *pdu) {
   int encode = 0, have_options = 0;
   coap_opt_iterator_t opt_iter;
   coap_opt_t *option;
+return;	//Minjin, 150915
 
   fprintf(COAP_DEBUG_FD, "v:%d t:%d tkl:%d c:%d id:%u",
 	  pdu->hdr->version, pdu->hdr->type,
