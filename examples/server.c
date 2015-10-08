@@ -59,7 +59,9 @@ handle_sigint(int signum) {
 #define OEM_DEFINED 			1
 #define OEM_THREAD				1
 #define OEM_MUTEX					1
-#define OEM_MUTEX_DELAY		(10*1000)		/* 10ms */
+#define OEM_CACHE					1
+//#define OEM_CACHE_VALIDATION_DELAY		(10*1000)		/* 10ms */
+#define OEM_LOCK_DELAY		(10*1000)		/* 10ms */
 #define OEM_STRING				"minjinsong@hotmail.com"
 
 #if OEM_THREAD
@@ -105,6 +107,46 @@ hnd_get_index(coap_context_t  *ctx, struct coap_resource_t *resource,
 
 #if OEM_DEFINED
 FILE *file; 
+int g_fValid = 0;
+struct timeval g_tv;
+	
+int setCached(struct timeval timestamp)
+{
+	g_fValid = 1;
+	g_tv = timestamp;
+	//printf("%s:g_tv.tv_sec=%d, g_tv.tv_usec=%d\n", __func__, g_tv.tv_sec, g_tv.tv_usec);
+	
+	return 1;
+}	
+
+int unsetCached()
+{
+	g_fValid = 0;
+	memset(&g_tv, 0x0, sizeof(struct timeval));
+}
+	
+int isCached(struct timeval now)
+{
+	int ret = 0;
+	struct timeval interval;
+	//gettimeofday(&now, NULL);
+	interval.tv_sec  = now.tv_sec  - g_tv.tv_sec;
+	interval.tv_usec = now.tv_usec - g_tv.tv_usec;
+	if( interval.tv_usec < 0 ) {interval.tv_sec=interval.tv_sec-1; interval.tv_usec=interval.tv_usec + 1000000;	}	
+		
+	if((interval.tv_sec==0) && (interval.tv_usec<OEM_LOCK_DELAY) /*&& g_fCached*/ )
+	{
+			//printf("1-interval.tv_sec=%d, interval.tv_usec=%d(%d)\n", interval.tv_sec, interval.tv_usec, OEM_LOCK_DELAY);
+			ret = 1;
+	}
+	else
+	{
+		unsetCached();
+		//printf("2-unsetCached\n");
+	}
+
+	return ret;
+}
 	
 void 
 hnd_get_test(coap_context_t  *ctx, struct coap_resource_t *resource,
@@ -112,34 +154,59 @@ hnd_get_test(coap_context_t  *ctx, struct coap_resource_t *resource,
 	     coap_address_t *peer, coap_pdu_t *request, str *token,
 	     coap_pdu_t *response) 
 {
+	int fCached = 0;
 	struct timeval timeRecv, timeStart, timeEnd;
 	struct timeval timeWait, timeProcess, timeTotal;
 	gettimeofday(&timeRecv, NULL);
 
-#if OEM_MUTEX
-	pthread_mutex_lock(&m_lock);
-#endif	//OEM_MUTEX	
-
-	gettimeofday(&timeStart, NULL);
-
-	usleep(OEM_MUTEX_DELAY);
-
-  unsigned char buf[3];
-
-  response->hdr->code = COAP_RESPONSE_CODE(205);
-
-  coap_add_option(response, COAP_OPTION_CONTENT_TYPE,
-	  coap_encode_var_bytes(buf, COAP_MEDIATYPE_TEXT_PLAIN), buf);
-
-  coap_add_option(response, COAP_OPTION_MAXAGE,
-	  coap_encode_var_bytes(buf, 0x2ffff), buf);
-    
-  coap_add_data(response, strlen(OEM_STRING), (unsigned char *)OEM_STRING);	
+#if OEM_CACHE	
+	if(isCached(timeRecv))	
+	{
+		gettimeofday(&timeStart, NULL);
+		fCached = 1;
+		
+		unsigned char buf[3];
 	
-
-#if OEM_MUTEX
-	pthread_mutex_unlock(&m_lock);
-#endif //OEM_MUTEX
+	  response->hdr->code = COAP_RESPONSE_CODE(205);
+	
+	  coap_add_option(response, COAP_OPTION_CONTENT_TYPE,
+		  coap_encode_var_bytes(buf, COAP_MEDIATYPE_TEXT_PLAIN), buf);
+	
+	  coap_add_option(response, COAP_OPTION_MAXAGE,
+		  coap_encode_var_bytes(buf, 0x2ffff), buf);
+	    
+	  coap_add_data(response, strlen(OEM_STRING), (unsigned char *)OEM_STRING);	
+	}
+	else
+#endif		
+	{
+	#if OEM_MUTEX
+			pthread_mutex_lock(&m_lock);
+	#endif	//OEM_MUTEX	
+	
+		fCached = 0;
+	
+		gettimeofday(&timeStart, NULL);
+		setCached(timeStart);
+		
+		usleep(OEM_LOCK_DELAY);
+			
+	  unsigned char buf[3];
+	
+	  response->hdr->code = COAP_RESPONSE_CODE(205);
+	
+	  coap_add_option(response, COAP_OPTION_CONTENT_TYPE,
+		  coap_encode_var_bytes(buf, COAP_MEDIATYPE_TEXT_PLAIN), buf);
+	
+	  coap_add_option(response, COAP_OPTION_MAXAGE,
+		  coap_encode_var_bytes(buf, 0x2ffff), buf);
+	    
+	  coap_add_data(response, strlen(OEM_STRING), (unsigned char *)OEM_STRING);	
+	
+	#if OEM_MUTEX
+			pthread_mutex_unlock(&m_lock);
+	#endif //OEM_MUTEX
+	}	//if(isCached())	
 
 	gettimeofday(&timeEnd, NULL);  
 	timeTotal.tv_sec  = timeEnd.tv_sec  - timeRecv.tv_sec;
@@ -153,14 +220,15 @@ hnd_get_test(coap_context_t  *ctx, struct coap_resource_t *resource,
 	if( timeProcess.tv_usec < 0 ) {timeProcess.tv_sec=timeProcess.tv_sec-1; timeProcess.tv_usec=timeProcess.tv_usec + 1000000;	}	
 		
 	//printf(";%d ;%ld.%06ld; %ld.%06ld; %ld.%06ld; %ld.%06ld; %ld.%06ld; %ld.%06ld\n", 
-	fprintf(file, ";%d ;%ld.%06ld; %ld.%06ld; %ld.%06ld; %ld.%06ld; %ld.%06ld; %ld.%06ld\n", 
+	fprintf(file, ";%d ;%ld.%06ld; %ld.%06ld; %ld.%06ld; %ld.%06ld; %ld.%06ld; %ld.%06ld; %d\n", 
 		++g_cnt,
 		timeRecv.tv_sec, timeRecv.tv_usec,
 		timeStart.tv_sec, timeStart.tv_usec,
 		timeEnd.tv_sec, timeEnd.tv_usec,
 		timeTotal.tv_sec, timeTotal.tv_usec,
 		timeWait.tv_sec, timeWait.tv_usec,
-		timeProcess.tv_sec, timeProcess.tv_usec
+		timeProcess.tv_sec, timeProcess.tv_usec,
+		fCached
 		);
 }
 #endif	//#if OEM_DEFINED
@@ -185,7 +253,7 @@ hnd_get_time(coap_context_t  *ctx, struct coap_resource_t *resource,
 	pthread_mutex_lock(&m_lock);
 #endif	//OEM_MUTEX	
 #if OEM_DEFINED
-	usleep(OEM_MUTEX_DELAY);
+	usleep(OEM_LOCK_DELAY);
 #endif //OEM_DEFINED
   /* FIXME: return time, e.g. in human-readable by default and ticks
    * when query ?ticks is given. */

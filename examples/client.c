@@ -8,6 +8,9 @@
  
 #define OEM_DEFINED				1
 #define OEM_RETRANSMIT		1
+//#define OEM_RANDOM_DELAY_MAX	1000		/* 1sec */
+#define OEM_RANDOM_DELAY_MAX	500		/* 500 ms */
+//#define OEM_RANDOM_DELAY_MAX	10		/* 10 ms */
 
 #include "config.h"
 
@@ -549,6 +552,7 @@ usage( const char *program, const char *version) {
 	   "\tcoap-client -m get coap://[::1]/.well-known/core\n"
 	   "\tcoap-client -m get -T cafe coap://[::1]/time\n"
 	   "\techo 1000 | coap-client -m put -T cafe coap://[::1]/time -f -\n"
+	   "\teg. examples/coap-client -i 1 -l 1000 -v 1 -m get coap://192.168.0.7:5683/test"
 	   ,program, version, program, wait_seconds);
 }
 
@@ -1153,10 +1157,10 @@ int random = 0;
 srand(time(NULL));
 while(loop++ < gLoopCnt)
 {	
-	random = rand()%500;
+	random = rand()%OEM_RANDOM_DELAY_MAX;
 	printf("random=%d\n", random);
 	//usleep(gInterval*1000);
-	usleep(random*1000);
+	usleep(random*1000+1);
 	
 	struct timeval timeStart, timeEnd, timeDiff;
 	gettimeofday(&timeStart, NULL);
