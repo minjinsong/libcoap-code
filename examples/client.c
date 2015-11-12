@@ -7,9 +7,9 @@
  */
  
 #define OEM_DEFINED				1
-#define OEM_RETRANSMIT		1
+#define OEM_RETRANSMIT		0
 //#define OEM_RANDOM_DELAY_MAX	1000		/* 1sec */
-#define OEM_RANDOM_DELAY_MAX	500		/* 500 ms */
+#define OEM_RANDOM_DELAY_MAX	2000		/* 2 sec */
 //#define OEM_RANDOM_DELAY_MAX	10		/* 10 ms */
 
 #include "config.h"
@@ -1159,8 +1159,10 @@ while(loop++ < gLoopCnt)
 {	
 	random = rand()%OEM_RANDOM_DELAY_MAX;
 	printf("random=%d\n", random);
-	//usleep(gInterval*1000);
 	usleep(random*1000+1);
+	//printf("gInterval=%d\n", gInterval);
+	//usleep(gInterval*1000);
+	
 	
 	struct timeval timeStart, timeEnd, timeDiff;
 	gettimeofday(&timeStart, NULL);

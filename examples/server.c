@@ -231,6 +231,230 @@ hnd_get_test(coap_context_t  *ctx, struct coap_resource_t *resource,
 		fCached
 		);
 }
+
+int 
+resolve_address(const str *server, struct sockaddr *dst) {
+  
+  struct addrinfo *res, *ainfo;
+  struct addrinfo hints;
+  static char addrstr[256];
+  int error, len=-1;
+printf("%s:+++\n", __func__);
+  memset(addrstr, 0, sizeof(addrstr));
+  if (server->length)
+    memcpy(addrstr, server->s, server->length);
+  else
+    memcpy(addrstr, "localhost", 9);
+    
+  memset ((char *)&hints, 0, sizeof(hints));
+  hints.ai_socktype = SOCK_DGRAM;
+  hints.ai_family = AF_UNSPEC;
+  error = getaddrinfo(addrstr, "", &hints, &res);
+
+  if (error != 0) {
+    fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(error));
+    return error;
+  }
+
+  for (ainfo = res; ainfo != NULL; ainfo = ainfo->ai_next) {
+    switch (ainfo->ai_family) {
+    case AF_INET6:
+    case AF_INET:
+      len = ainfo->ai_addrlen;
+      memcpy(dst, ainfo->ai_addr, len);
+      goto finish;
+    default:
+      ;
+    }
+  }
+
+ finish:
+  freeaddrinfo(res);
+  return len;
+}
+
+#if 0
+void 
+hnd_get_resource_proxy(coap_context_t  *ctx, struct coap_resource_t *resource,
+	     const coap_endpoint_t *local_interface,
+	     coap_address_t *peer, coap_pdu_t *request, str *token,
+	     coap_pdu_t *response) 
+{
+	coap_pdu_t  *pdu;
+	int result;
+	int res;
+	struct timeval tv;
+	fd_set readfds;
+	
+	static str server;
+	unsigned short port = COAP_DEFAULT_PORT+1;
+	coap_address_t dst;
+	//str proxy = { 0, NULL };
+	
+printf("%s:+++\n", __func__);
+#define OEM_SERVER_STR		"192.168.0.6"
+	server.length = strlen(OEM_SERVER_STR);
+	server.s = coap_malloc(server.length + 1);
+	memcpy(server.s, OEM_SERVER_STR, server.length+1);
+
+	res = resolve_address(&server, &dst.addr.sa);
+	if (res < 0) {
+    fprintf(stderr, "failed to resolve address\n");
+    exit(-1);
+  }	
+
+	dst.size = res;
+  dst.addr.sin.sin_port = htons(port);
+
+  //ctx = get_context(node_str[0] == 0 ? "0.0.0.0" : node_str, port_str);
+	//coap_register_option(ctx, COAP_OPTION_BLOCK2);
+  //coap_register_response_handler(ctx, message_handler);
+
+printf("%s:5\n", __func__);
+
+	coap_send_confirmed(ctx, ctx->endpoint, &dst, pdu);
+	
+	FD_ZERO(&readfds);
+	FD_SET( ctx->sockfd, &readfds );
+	
+	result = select(ctx->sockfd + 1, &readfds, 0, 0, NULL);
+printf("%s:6:result=%d\n", __func__, result);
+	if ( result < 0 ) {		/* error */
+		perror("select");
+	} else if ( result > 0 ) {	/* read from socket */
+		if ( FD_ISSET( ctx->sockfd, &readfds ) ) {
+			coap_read( ctx );	/* read received data */
+			/* coap_dispatch( ctx );	/\* and dispatch PDUs from receivequeue *\/ */
+		}
+	}
+	
+	  unsigned char buf[3];
+	
+	  response->hdr->code = COAP_RESPONSE_CODE(205);
+	
+	  coap_add_option(response, COAP_OPTION_CONTENT_TYPE,
+		  coap_encode_var_bytes(buf, COAP_MEDIATYPE_TEXT_PLAIN), buf);
+	
+	  coap_add_option(response, COAP_OPTION_MAXAGE,
+		  coap_encode_var_bytes(buf, 0x2ffff), buf);
+	    
+	  coap_add_data(response, strlen(OEM_STRING), (unsigned char *)OEM_STRING);	
+
+	printf("%s:---\n", __func__);	  
+}
+#else
+
+static int cnt = 0;
+int sock;
+struct sockaddr_in server;
+void 
+hnd_get_resource_proxy(coap_context_t  *ctx, struct coap_resource_t *resource,
+	     const coap_endpoint_t *local_interface,
+	     coap_address_t *peer, coap_pdu_t *request, str *token,
+	     coap_pdu_t *response) 
+{
+	//int sock;
+	//struct sockaddr_in server;
+	char message[1000] = { '1', '2', '3', '4', '5', '6', '7', '8', 0x0};
+	char server_reply[2000] = { 0x0, };
+	
+	printf("%s:+++:cnt=%d\n", __func__, cnt++);
+	
+	//pthread_mutex_lock(&m_lock);
+	/*
+	//Create socket
+	//if(sock == 0)
+	{
+		sock = socket(AF_INET , SOCK_STREAM , 0);
+		if (sock == -1)
+		{
+			printf("Could not create socket");
+		}
+	}	
+	printf("%s:Socket created(%d)\n", __func__, cnt++);
+     
+    server.sin_addr.s_addr = inet_addr("127.0.0.1");
+    server.sin_family = AF_INET;
+    server.sin_port = htons( 8888 );
+
+	//Connect to remote server
+    if (connect(sock , (struct sockaddr *)&server , sizeof(server)) < 0)
+    {
+        perror("connect failed. Error");
+        //return 1;
+    }
+    
+    puts("Connected\n");
+*/
+    //while(1)
+    {
+    //Send some data
+        if( send(sock , message , strlen(message) , 0) < 0)
+        {
+            puts("Send failed");
+            return 1;
+        }
+
+        //Receive a reply from the server
+        if( recv(sock , server_reply , 2000 , 0) < 0)
+        {
+            puts("recv failed");
+            //break;
+        }
+         
+        printf("Server reply :%s\n", server_reply);
+		}
+		//close(sock);
+		//sock = 0;
+		//pthread_mutex_unlock(&m_lock);
+     
+	  unsigned char buf[3];
+	
+	  response->hdr->code = COAP_RESPONSE_CODE(205);
+	
+	  coap_add_option(response, COAP_OPTION_CONTENT_TYPE,
+		  coap_encode_var_bytes(buf, COAP_MEDIATYPE_TEXT_PLAIN), buf);
+	
+	  coap_add_option(response, COAP_OPTION_MAXAGE,
+		  coap_encode_var_bytes(buf, 0x2ffff), buf);
+	    
+	  coap_add_data(response, strlen(OEM_STRING), (unsigned char *)OEM_STRING);	
+         
+    return;        
+}
+
+void socket_init()
+{
+	sock = socket(AF_INET , SOCK_STREAM , 0);
+	if (sock == -1)
+	{
+		printf("Could not create socket");
+	}
+	
+	sock = socket(AF_INET , SOCK_STREAM , 0);
+	if (sock == -1)
+	{
+		printf("Could not create socket");
+	}
+	
+	//printf("%s:Socket created(%d)\n", __func__, cnt++);
+     
+    server.sin_addr.s_addr = inet_addr("127.0.0.1");
+    server.sin_family = AF_INET;
+    server.sin_port = htons( 8888 );
+	
+	//Connect to remote server
+    if (connect(sock , (struct sockaddr *)&server , sizeof(server)) < 0)
+    {
+        perror("connect failed. Error");
+        return 1;
+    }
+    
+    puts("Connected\n");
+  
+}
+#endif
+
 #endif	//#if OEM_DEFINED
 
 void 
@@ -479,6 +703,12 @@ init_resources(coap_context_t *ctx) {
   coap_add_attr(r, (unsigned char *)"ct", 2, (unsigned char *)"0", 1, 0);
   coap_add_attr(r, (unsigned char *)"title", 5, (unsigned char *)"\"minin7.song@samsung.com\"", 16, 0);  
   coap_add_resource(ctx, r);
+  
+  r = coap_resource_init((unsigned char *)"resource_proxy", 14, 0);
+  coap_register_handler(r, COAP_REQUEST_GET, hnd_get_resource_proxy);
+  coap_add_attr(r, (unsigned char *)"ct", 2, (unsigned char *)"0", 1, 0);
+  coap_add_attr(r, (unsigned char *)"title", 5, (unsigned char *)"\"Get Resource through Proxy\"", 16, 0);  
+  coap_add_resource(ctx, r);
 #endif //#if OEM_DEFINED
 }
 
@@ -555,6 +785,8 @@ main(int argc, char **argv) {
   coap_log_t log_level = LOG_WARNING;
   
 #if OEM_DEFINED
+	socket_init();
+	
 	file = fopen("/tmp/log.txt", "w+");
 	
 	pthread_t ptId = 0;
@@ -649,6 +881,7 @@ main(int argc, char **argv) {
   
 #if OEM_DEFINED
 	fclose(file);
+	close(sock);
 #endif	//#if OEM_DEFINED
   coap_free_context( ctx );
 
