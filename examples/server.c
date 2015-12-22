@@ -847,6 +847,7 @@ main(int argc, char **argv) {
       tv.tv_sec = COAP_RESOURCE_CHECK_TIME;
       timeout = &tv;
     }
+//printf("%s:select timeout=%ld.%06ld\n", __func__,  timeout->tv_sec, timeout->tv_usec);	
     result = select( FD_SETSIZE, &readfds, 0, 0, timeout );
 
     if ( result < 0 ) {		/* error */
