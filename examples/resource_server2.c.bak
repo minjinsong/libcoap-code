@@ -1,5 +1,6 @@
 /*
-	build : gcc -o server_chat server_chat.c -lpthread	
+	build : gcc -o resource_server resource_server.c -lpthread	
+	execution : ./resource_server 1024
 */
  
 
@@ -14,15 +15,17 @@
 #include<time.h>
 
 #define MAXLINE		(1024)
-#define MAX_SOCK 	(1024*1024)
+#define MAX_SOCK 	(1024)
 
-char *escapechar = "exit";
 int getmax(int);
 void removeClient(int);
-int maxfdp1;
-int num_chat = 0;
-int client_s[MAX_SOCK] = {0, };
 
+int maxfdp1;
+int num_client = 0;
+int client_s[MAX_SOCK] = {0, };
+char *escapechar = "exit";
+
+pthread_mutex_t m_lock;
 
 struct __message {
 	unsigned int owner;
@@ -40,17 +43,50 @@ struct __message {
 	struct timeval client_finished;
 };
 
+//struct __message msg;
 
+
+int handleMessage(struct __message *msg)
+{
+	
+	struct timeval timeRecv, timeStart, timeEnd;
+	
+	gettimeofday(&timeRecv, NULL);
+	pthread_mutex_lock(&m_lock);
+    		
+	//TODO: handle packet
+	gettimeofday(&timeStart, NULL);
+	usleep(1000*1000);	
+    		
+	pthread_mutex_unlock(&m_lock);
+	gettimeofday(&timeEnd, NULL);
+	
+	printf("[%d]%d-%d\n", msg->owner, msg->cnt, msg->req_dur);
+	msg->server_recved.tv_sec = timeRecv.tv_sec;
+	msg->server_recved.tv_usec = timeRecv.tv_usec;
+	msg->server_started.tv_sec = timeStart.tv_sec;
+	msg->server_started.tv_usec = timeStart.tv_usec;
+	msg->server_finished.tv_sec = timeEnd.tv_sec;
+	msg->server_finished.tv_usec = timeEnd.tv_usec;
+
+	msg->rsp_dur = 1000;	
+	
+	return 0;
+}
 
 int main(int argc , char *argv[])
 {
 		char rline[MAXLINE], my_msg[MAXLINE];
-		char *start = "Connected to chat_server\n";
+		char *start = "Connected to server\n";
 		int i, j, n;
 		int s, client_fd, client;
-		
 		fd_set read_fds;
 		struct sockaddr_in client_addr, server_addr;
+		
+		struct __message msg;
+		
+		pthread_mutex_init(&m_lock, NULL);
+		
 		if(argc != 2)
 		{
 			printf("usage : %s [port#]\n", argv[0]);
@@ -64,7 +100,7 @@ int main(int argc , char *argv[])
 		}	//if((s = socket
 		
 		int option = 1;
-		setsockopt( server_socket, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option) );
+		setsockopt( s, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option) );
 			
 		bzero((char *)&server_addr, sizeof(server_addr));
 		server_addr.sin_family = AF_INET;
@@ -86,7 +122,7 @@ int main(int argc , char *argv[])
 			FD_ZERO(&read_fds);
 			FD_SET(s, &read_fds);
 			
-			for(i=0; i<num_chat; i++)
+			for(i=0; i<num_client; i++)
 			{
 				FD_SET(client_s[i], &read_fds);
 			}	//for(i=0;
@@ -110,36 +146,45 @@ int main(int argc , char *argv[])
 					exit(0);
 				}
 							
-				client_s[num_chat] = client_fd;
-				num_chat++;
+				client_s[num_client] = client_fd;
+				num_client++;
 				send(client_fd, start, strlen(start), 0);
 						
-				printf("server : user#%d added!\n", num_chat);
+				printf("server : user#%d added!\n", num_client);
 						
 			}//if(FD_ISSET
 					
-			for(i=0; i<num_chat; i++)
+			for(i=0; i<num_client; i++)
 			{
 				if(FD_ISSET(client_s[i], &read_fds))
 				{
+#if 1
+					if((n = recv(client_s[i], &msg, sizeof(msg), 0)) <= 0)
+#else					
 					if((n = recv(client_s[i], rline, MAXLINE, 0)) <= 0)
+#endif						
 					{
 						removeClient(i);
 						continue;
 					}	//if((n = recv
-						
+			
+#if 1
+					handleMessage(&msg);
+					send(client_s[i], &msg, sizeof(msg), 0);					
+#else
 					if(strstr(rline, escapechar) != NULL)
 					{
 						removeClient(i);
 						continue;
 					}	//if(strstr
-									
+					
 					rline[n] = '\0';
-					for(j=0; j<num_chat; j++)
+					for(j=0; j<num_client; j++)
 					{
 						send(client_s[j], rline, n, 0);
 					} //for(j=0
 					printf("%s\n", rline);
+#endif
 				} //if(FD_ISSET(	
 
 			} //for(i=0
@@ -152,12 +197,12 @@ int main(int argc , char *argv[])
 void removeClient(int i)
 {
 	close(client_s[i]);
-	if(i != num_chat-1)
+	if(i != num_client-1)
 	{
-		client_s[i] = client_s[num_chat-1];
+		client_s[i] = client_s[num_client-1];
 	}
-	num_chat--;
-	printf("server : user exit, num = %d\n", num_chat);
+	num_client--;
+	printf("server : user exit, num = %d\n", num_client);
 }	//void removeClient
 
 
@@ -166,7 +211,7 @@ int getmax(int k)
 	int max = k;
 	int r;
 	
-	for(r=0; r<num_chat; r++)
+	for(r=0; r<num_client; r++)
 	{
 		if(client_s[r] > max)
 		{
