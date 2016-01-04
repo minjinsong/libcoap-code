@@ -17,12 +17,12 @@
 #define MAXLINE		(1024)
 #define MAX_SOCK 	(1024)
 
-int getmax(int);
+int getFdMax(int);
 void removeClient(int);
 
-int maxfdp1;
-int num_client = 0;
-int client_s[MAX_SOCK] = {0, };
+int g_piFdMax;
+int g_iClientMax = 0;
+int g_piSocketClient[MAX_SOCK] = {0, };
 char *escapechar = "exit";
 
 pthread_mutex_t m_lock;
@@ -30,6 +30,7 @@ pthread_mutex_t m_lock;
 struct __message {
 	unsigned int owner;
 	unsigned int cnt;
+	unsigned int cmd;
 	unsigned int req_dur;
 	unsigned int rsp_dur;
 	struct timeval server_recved;
@@ -41,6 +42,15 @@ struct __message {
 	struct timeval client_recved;
 	struct timeval client_started;
 	struct timeval client_finished;
+};
+
+struct __client {
+	int socket;
+};
+
+struct __client_head {
+	int cnt;
+	struct __client *client;
 };
 
 //struct __message msg;
@@ -77,13 +87,14 @@ int handleMessage(struct __message *msg)
 int main(int argc , char *argv[])
 {
 		char rline[MAXLINE], my_msg[MAXLINE];
-		char *start = "Connected to server\n";
+		//char *start = "Connected to server\n";
 		int i, j, n;
 		int s, client_fd, client;
 		fd_set read_fds;
 		struct sockaddr_in client_addr, server_addr;
 		
-		struct __message msg;
+		struct __message rcv = { 0x0, };
+		struct __message trans = { 0x0, };
 		
 		pthread_mutex_init(&m_lock, NULL);
 		
@@ -108,33 +119,31 @@ int main(int argc , char *argv[])
 		server_addr.sin_port = htons(atoi(argv[1]));
 			
 		if(bind(s, (struct sockaddr  *)&server_addr, sizeof(server_addr)) < 0)
-			{
-				printf("server : bind failed!\n");
-				exit(0);
-			}
+		{
+			printf("server : bind failed!\n");
+			exit(0);
+		}
 		
 		listen(s, 5);
 			
-		maxfdp1 = s + 1;
-		
+		g_piFdMax = s + 1;
+
 		while(1)
 		{
 			FD_ZERO(&read_fds);
 			FD_SET(s, &read_fds);
 			
-			for(i=0; i<num_client; i++)
+			for(i=0; i<g_iClientMax; i++)
 			{
-				FD_SET(client_s[i], &read_fds);
+				FD_SET(g_piSocketClient[i], &read_fds);
 			}	//for(i=0;
 			
-			maxfdp1 = getmax(s) + 1;
-				
-			if(select(maxfdp1, &read_fds, (fd_set *)0, (fd_set *)0, (struct timeval *)0) < 0)
+			g_piFdMax = getFdMax(s) + 1;
+			if(select(g_piFdMax, &read_fds, (fd_set *)0, (fd_set *)0, (struct timeval *)0) < 0)
 			{
 				printf("server : select failed\n");
 				exit(0);
 			}//if(select
-				
 				
 			if(FD_ISSET(s, &read_fds))
 			{
@@ -145,32 +154,36 @@ int main(int argc , char *argv[])
 					printf("server : accept failed!\n");
 					exit(0);
 				}
-							
-				client_s[num_client] = client_fd;
-				num_client++;
-				send(client_fd, start, strlen(start), 0);
-						
-				printf("server : user#%d added!\n", num_client);
-						
+
+				g_piSocketClient[g_iClientMax] = client_fd;
+				g_iClientMax++;
+
+				//printf("client_fd=%d, g_iClientMax=%d\n", client_fd, g_iClientMax);		
+				//send(client_fd, start, strlen(start), 0);
+				printf("server : user#%d added!\n", g_iClientMax);
 			}//if(FD_ISSET
-					
-			for(i=0; i<num_client; i++)
+
+			for(i=0; i<g_iClientMax; i++)
 			{
-				if(FD_ISSET(client_s[i], &read_fds))
+				if(FD_ISSET(g_piSocketClient[i], &read_fds))
 				{
-#if 1
-					if((n = recv(client_s[i], &msg, sizeof(msg), 0)) <= 0)
-#else					
-					if((n = recv(client_s[i], rline, MAXLINE, 0)) <= 0)
-#endif						
+					memset(&rcv, 0x0, sizeof(rcv));
+					if((n = recv(g_piSocketClient[i], &rcv, sizeof(rcv), 0)) <= 0)
 					{
 						removeClient(i);
 						continue;
-					}	//if((n = recv
-			
+					}
 #if 1
-					handleMessage(&msg);
-					send(client_s[i], &msg, sizeof(msg), 0);
+					if(rcv.cmd == 0x99999999)
+					{
+						removeClient(i);
+						continue;
+					}
+
+					handleMessage(&rcv);
+					memcpy(&trans, &rcv, sizeof(rcv));
+
+					int temp = send(g_piSocketClient[i], &trans, sizeof(trans), 0);
 #else
 					if(strstr(rline, escapechar) != NULL)
 					{
@@ -179,45 +192,43 @@ int main(int argc , char *argv[])
 					}	//if(strstr
 					
 					rline[n] = '\0';
-					for(j=0; j<num_client; j++)
+					for(j=0; j<g_iClientMax; j++)
 					{
-						send(client_s[j], rline, n, 0);
+						send(g_piSocketClient[j], rline, n, 0);
 					} //for(j=0
 					printf("%s\n", rline);
 #endif
 				} //if(FD_ISSET(	
-
 			} //for(i=0
 		} //while(1)
-
 		return 0;
 }
 
 
-void removeClient(int i)
+void removeClient(int index)
 {
-	close(client_s[i]);
-	if(i != num_client-1)
+	close(g_piSocketClient[index]);
+	if(index != g_iClientMax-1)
 	{
-		client_s[i] = client_s[num_client-1];
+		g_piSocketClient[index] = g_piSocketClient[g_iClientMax-1];
 	}
-	num_client--;
-	printf("server : user exit, num = %d\n", num_client);
+	g_iClientMax--;
+	printf("server : user exit, num = %d\n", g_iClientMax);
 }	//void removeClient
 
 
-int getmax(int k)
+int getFdMax(int k)
 {
 	int max = k;
 	int r;
 	
-	for(r=0; r<num_client; r++)
+	for(r=0; r<g_iClientMax; r++)
 	{
-		if(client_s[r] > max)
+		if(g_piSocketClient[r] > max)
 		{
-			max = client_s[r];
+			max = g_piSocketClient[r];
 		}
 	}
 	return max;
-}	//int getmax
+}	//int getFdMax
 

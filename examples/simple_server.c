@@ -10,7 +10,7 @@
 #include<sys/socket.h>
 #include<arpa/inet.h> //inet_addr
 #include<unistd.h>    //write
-
+#include<time.h>
 
 struct __message {
 	unsigned int owner;
@@ -36,12 +36,13 @@ pthread_mutex_t m_lock;
 
 struct __message msg;
 
-
+#if 0
 FILE *file;
 
 void dump_time(struct timeval timeRecv, struct timeval timeStart, struct timeval timeEnd)
 {
 	struct timeval timeWait, timeProcess, timeTotal;
+	file = fopen("/tmp/log.txt", "w+");
 	
 	timeTotal.tv_sec  = timeEnd.tv_sec  - timeRecv.tv_sec;
 	timeTotal.tv_usec = timeEnd.tv_usec - timeRecv.tv_usec;
@@ -71,8 +72,10 @@ void dump_time(struct timeval timeRecv, struct timeval timeStart, struct timeval
 		fprintf(file, "minjin!!!\n");
 		
 	}
-		
+	
+	fclose(file);	
 }
+#endif //#if 0
 
 void *pthread_func(void *arg)
 {
@@ -88,11 +91,7 @@ void *pthread_func(void *arg)
 	pthread_mutex_unlock(&m_lock);
 	gettimeofday(&timeEnd, NULL);
 	
-#if 0	
-	//dump_time(timeRecv, timeStart, timeEnd);	
-	write(client_sock , client_message , strlen(client_message));
-	printf("---:\n");
-#else
+#if 1
 	printf("[%d]%d-%d\n", msg.owner, msg.cnt, msg.req_dur);
 	msg.server_recved.tv_sec = timeRecv.tv_sec;
 	msg.server_recved.tv_usec = timeRecv.tv_usec;
@@ -118,7 +117,6 @@ int main(int argc , char *argv[])
     pthread_t ptId = 0;
     
     pthread_mutex_init(&m_lock, NULL);
-    file = fopen("/tmp/log.txt", "w+");
      
     //Create socket
     socket_desc = socket(AF_INET , SOCK_STREAM , 0);
@@ -189,7 +187,5 @@ int main(int argc , char *argv[])
 //}	//while(1)
 	close(client_sock);
 
-    fclose(file);
-     
     return 0;
 }

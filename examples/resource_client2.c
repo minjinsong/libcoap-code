@@ -9,6 +9,7 @@
 #include <netinet/in.h>
 #include <sys/time.h>
 #include <string.h>
+#include <time.h>
 
 
 #define MAXLINE			512
@@ -21,6 +22,7 @@ char name[10];
 struct __message {
 	unsigned int owner;
 	unsigned int cnt;
+	unsigned int cmd;
 	unsigned int req_dur;
 	unsigned int rsp_dur;
 	struct timeval server_recved;
@@ -39,6 +41,8 @@ int initMessage(struct __message *msg)
 	struct timeval timeStart;
 	struct timeval timeTrans;
 	
+	srand(time(NULL));
+	
 	memset(msg, 0x0, sizeof(msg));
 	
 	msg->owner = random()%10000;
@@ -52,28 +56,28 @@ int initMessage(struct __message *msg)
 	return 0;
 }
 
-int dumpMessage(struct __message *msg)
+int dumpMessage(struct __message msg)
 {
 	struct timeval timeTrans;
 
 	//TODO: dump response
-	timeTrans.tv_sec = msg->server_recved.tv_sec - msg->proxy_started.tv_sec;
-	timeTrans.tv_usec = msg->server_recved.tv_usec - msg->proxy_started.tv_usec;
+	timeTrans.tv_sec = msg.server_recved.tv_sec - msg.proxy_started.tv_sec;
+	timeTrans.tv_usec = msg.server_recved.tv_usec - msg.proxy_started.tv_usec;
 	if( timeTrans.tv_usec < 0 ) {timeTrans.tv_sec=timeTrans.tv_sec-1; timeTrans.tv_usec=timeTrans.tv_usec + 1000000;	}	
 	
 	printf("[%d|%d|%d|%d][%ld.%06ld|%ld.%06ld|%ld.%06ld][%ld.%06ld]%ld.%06ld\n", \
-		msg->owner,	\
-		msg->cnt,	\
-		msg->req_dur,	\
-		msg->rsp_dur,	\
-		msg->server_recved.tv_sec%1000,	\
-		msg->server_recved.tv_usec,	\
-		msg->server_started.tv_sec%1000,	\
-		msg->server_started.tv_usec,	\
-		msg->server_finished.tv_sec%1000,	\
-		msg->server_finished.tv_usec,	\
-		msg->proxy_started.tv_sec%1000,	\
-		msg->proxy_started.tv_usec,	\
+		msg.owner,	\
+		msg.cnt,	\
+		msg.req_dur,	\
+		msg.rsp_dur,	\
+		msg.server_recved.tv_sec%1000,	\
+		msg.server_recved.tv_usec,	\
+		msg.server_started.tv_sec%1000,	\
+		msg.server_started.tv_usec,	\
+		msg.server_finished.tv_sec%1000,	\
+		msg.server_finished.tv_usec,	\
+		msg.proxy_started.tv_sec%1000,	\
+		msg.proxy_started.tv_usec,	\
 		timeTrans.tv_sec%1000,	\
 		timeTrans.tv_usec	\
 		);
@@ -126,17 +130,18 @@ int main(int argc, char *argv[])
 	maxfdp1 = s + 1;
 	FD_ZERO(&read_fds);
 	
+	initMessage(&msg);
+	
 	while(1)
 	{
 		FD_SET(0, &read_fds);
 		FD_SET(s, &read_fds);
 #if 1
-		initMessage(&msg);
 		if(send(s, &msg, sizeof(msg), 0) < 0)
 		{
 			printf("client : send failed!\n");
 		}	//if(send(
-#endif		
+#endif
 		
 		if(select(maxfdp1, &read_fds, (fd_set *)0, (fd_set *)0, (struct timeval *)0) < 0)
 		{
@@ -150,7 +155,7 @@ int main(int argc, char *argv[])
 #if 1
 			if((size = recv(s, &resp, sizeof(resp), 0)) > 0)
 			{
-				;
+				dumpMessage(resp);
 			}
 #else			
 			if((size = recv(s, message, MAXLINE, 0)) > 0)
