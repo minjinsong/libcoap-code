@@ -12,7 +12,11 @@
 #include <sys/file.h>
 #include <netinet/in.h>
 #include <string.h>
-#include<time.h>
+#include <time.h>
+#include <pthread.h>
+
+#define ENABLE_LINKEDLIST				0		//1:using linked list for managing clients
+#define ENABLE_HANDLETHREAD			1		//1:handling messages with thread
 
 #define MAXLINE		(1024)
 #define MAX_SOCK 	(1024)
@@ -28,6 +32,7 @@ char *escapechar = "exit";
 pthread_mutex_t m_lock;
 
 struct __message {
+	int iFd;
 	unsigned int owner;
 	unsigned int cnt;
 	unsigned int cmd;
@@ -56,32 +61,43 @@ struct __client_head {
 //struct __message msg;
 
 
-int handleMessage(struct __message *msg)
+int handleMessage(struct __message *arg)
 {
-	
 	struct timeval timeRecv, timeStart, timeEnd;
-	
+	struct __message msg;
+
+	memcpy(&msg, arg, sizeof(struct __message));
+
 	gettimeofday(&timeRecv, NULL);
 	pthread_mutex_lock(&m_lock);
     		
 	//TODO: handle packet
 	gettimeofday(&timeStart, NULL);
-	usleep(1000*1000);	
+	usleep(1000*1000);
     		
 	pthread_mutex_unlock(&m_lock);
 	gettimeofday(&timeEnd, NULL);
 	
-	printf("[%d]%d-%d\n", msg->owner, msg->cnt, msg->req_dur);
-	msg->server_recved.tv_sec = timeRecv.tv_sec;
-	msg->server_recved.tv_usec = timeRecv.tv_usec;
-	msg->server_started.tv_sec = timeStart.tv_sec;
-	msg->server_started.tv_usec = timeStart.tv_usec;
-	msg->server_finished.tv_sec = timeEnd.tv_sec;
-	msg->server_finished.tv_usec = timeEnd.tv_usec;
+	printf("[%d]%d-%d\n", msg.owner, msg.cnt, msg.req_dur);
+	msg.server_recved.tv_sec = timeRecv.tv_sec;
+	msg.server_recved.tv_usec = timeRecv.tv_usec;
+	msg.server_started.tv_sec = timeStart.tv_sec;
+	msg.server_started.tv_usec = timeStart.tv_usec;
+	msg.server_finished.tv_sec = timeEnd.tv_sec;
+	msg.server_finished.tv_usec = timeEnd.tv_usec;
 
-	msg->rsp_dur = 1000;	
+	msg.rsp_dur = 1000;	
 	
+	int temp = send(msg.iFd, &msg, sizeof(struct __message), 0);
+
 	return 0;
+}
+
+void *pthread_func(void *arg)
+{
+	handleMessage((struct __message *)arg);
+	
+	return NULL;
 }
 
 int main(int argc , char *argv[])
@@ -111,14 +127,14 @@ int main(int argc , char *argv[])
 		}	//if((s = socket
 		
 		int option = 1;
-		setsockopt( s, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option) );
+		setsockopt( s, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(int) );
 			
-		bzero((char *)&server_addr, sizeof(server_addr));
+		bzero((char *)&server_addr, sizeof(struct sockaddr_in));
 		server_addr.sin_family = AF_INET;
 		server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
 		server_addr.sin_port = htons(atoi(argv[1]));
 			
-		if(bind(s, (struct sockaddr  *)&server_addr, sizeof(server_addr)) < 0)
+		if(bind(s, (struct sockaddr  *)&server_addr, sizeof(struct sockaddr_in)) < 0)
 		{
 			printf("server : bind failed!\n");
 			exit(0);
@@ -147,7 +163,7 @@ int main(int argc , char *argv[])
 				
 			if(FD_ISSET(s, &read_fds))
 			{
-				client = sizeof(client_addr);
+				client = sizeof(struct sockaddr_in);
 				client_fd = accept(s, (struct sockaddr *)&client_addr, &client);
 				if(client_fd == -1)
 				{
@@ -167,36 +183,28 @@ int main(int argc , char *argv[])
 			{
 				if(FD_ISSET(g_piSocketClient[i], &read_fds))
 				{
-					memset(&rcv, 0x0, sizeof(rcv));
-					if((n = recv(g_piSocketClient[i], &rcv, sizeof(rcv), 0)) <= 0)
+					memset(&rcv, 0x0, sizeof(struct __message));
+					if((n = recv(g_piSocketClient[i], &rcv, sizeof(struct __message), 0)) <= 0)
 					{
 						removeClient(i);
 						continue;
 					}
-#if 1
+
 					if(rcv.cmd == 0x99999999)
 					{
 						removeClient(i);
 						continue;
 					}
 
+#if ENABLE_HANDLETHREAD 
+					pthread_t ptId = 0;
+					rcv.iFd = g_piSocketClient[i];
+					pthread_create(&ptId, NULL, pthread_func, (void *)&rcv);
+#else			
 					handleMessage(&rcv);
-					memcpy(&trans, &rcv, sizeof(rcv));
+					memcpy(&trans, &rcv, sizeof(struct __message));
 
-					int temp = send(g_piSocketClient[i], &trans, sizeof(trans), 0);
-#else
-					if(strstr(rline, escapechar) != NULL)
-					{
-						removeClient(i);
-						continue;
-					}	//if(strstr
-					
-					rline[n] = '\0';
-					for(j=0; j<g_iClientMax; j++)
-					{
-						send(g_piSocketClient[j], rline, n, 0);
-					} //for(j=0
-					printf("%s\n", rline);
+					int temp = send(g_piSocketClient[i], &trans, sizeof(struct __message), 0);
 #endif
 				} //if(FD_ISSET(	
 			} //for(i=0

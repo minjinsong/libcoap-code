@@ -20,6 +20,7 @@ char name[10];
 
 
 struct __message {
+	int iFd;
 	unsigned int owner;
 	unsigned int cnt;
 	unsigned int cmd;
@@ -43,7 +44,7 @@ int initMessage(struct __message *msg)
 	
 	srand(time(NULL));
 	
-	memset(msg, 0x0, sizeof(msg));
+	memset(msg, 0x0, sizeof(struct __message));
 	
 	msg->owner = random()%10000;
 	msg->cnt++;
@@ -112,12 +113,12 @@ int main(int argc, char *argv[])
 		exit(0);
 	}	//if( (s=socket
 	
-	bzero((char *)&server_addr, sizeof(server_addr));
+	bzero((char *)&server_addr, sizeof(struct sockaddr_in));
 	server_addr.sin_family = AF_INET;
 	server_addr.sin_addr.s_addr = inet_addr(argv[1]);
 	server_addr.sin_port = htons(atoi(argv[2]));
 	
-	if(connect(s, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
+	if(connect(s, (struct sockaddr *)&server_addr, sizeof(struct sockaddr_in)) < 0)
 	{
 		printf("client : connect failed!\n");
 		exit(0);
@@ -137,7 +138,7 @@ int main(int argc, char *argv[])
 		FD_SET(0, &read_fds);
 		FD_SET(s, &read_fds);
 #if 1
-		if(send(s, &msg, sizeof(msg), 0) < 0)
+		if(send(s, &msg, sizeof(struct __message), 0) < 0)
 		{
 			printf("client : send failed!\n");
 		}	//if(send(
@@ -153,7 +154,7 @@ int main(int argc, char *argv[])
 		{
 			int size;
 #if 1
-			if((size = recv(s, &resp, sizeof(resp), 0)) > 0)
+			if((size = recv(s, &resp, sizeof(struct __message), 0)) > 0)
 			{
 				dumpMessage(resp);
 			}
