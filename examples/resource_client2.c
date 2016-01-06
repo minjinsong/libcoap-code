@@ -1,5 +1,6 @@
 /*
 	build : gcc -o client_chat client_chat.c
+	execution : ./resource_client2 127.0.0.1 2048
 */
  
 #include <stdio.h>
@@ -11,12 +12,13 @@
 #include <string.h>
 #include <time.h>
 
+#define ENABLE_REPEATE				1		//1:send message to server repeatly
 
 #define MAXLINE			512
 #define MAX_SOCK		(1024*1024)
 
 char *escapechar = "exit";
-char name[10];
+//char name[10];
 
 
 struct __message {
@@ -40,19 +42,18 @@ struct __message {
 int initMessage(struct __message *msg)
 {
 	struct timeval timeStart;
-	struct timeval timeTrans;
+	//struct timeval timeTrans;
 	
-	srand(time(NULL));
+	//memset(msg, 0x0, sizeof(struct __message));
+	//srand(time(NULL));
+	//msg->owner = random()%10000;
 	
-	memset(msg, 0x0, sizeof(struct __message));
-	
-	msg->owner = random()%10000;
 	msg->cnt++;
 	msg->req_dur = 100;
 
 	gettimeofday(&timeStart, NULL);
-	msg->proxy_started.tv_sec = timeStart.tv_sec;
-	msg->proxy_started.tv_usec = timeStart.tv_usec;
+	msg->client_started.tv_sec = timeStart.tv_sec;
+	msg->client_started.tv_usec = timeStart.tv_usec;
 
 	return 0;
 }
@@ -62,34 +63,45 @@ int dumpMessage(struct __message msg)
 	struct timeval timeTrans;
 
 	//TODO: dump response
-#if 0	
-	timeTrans.tv_sec = msg.server_recved.tv_sec - msg.proxy_started.tv_sec;
-	timeTrans.tv_usec = msg.server_recved.tv_usec - msg.proxy_started.tv_usec;
+	timeTrans.tv_sec = msg.client_finished.tv_sec - msg.client_started.tv_sec;
+	timeTrans.tv_usec = msg.client_finished.tv_usec - msg.client_started.tv_usec;
 	if( timeTrans.tv_usec < 0 ) {timeTrans.tv_sec=timeTrans.tv_sec-1; timeTrans.tv_usec=timeTrans.tv_usec + 1000000;	}	
-#else
-	timeTrans.tv_sec = msg.server_recved.tv_sec - msg.proxy_started.tv_sec;
-	timeTrans.tv_usec = msg.server_recved.tv_usec - msg.proxy_started.tv_usec;
-	if( timeTrans.tv_usec < 0 ) {timeTrans.tv_sec=timeTrans.tv_sec-1; timeTrans.tv_usec=timeTrans.tv_usec + 1000000;	}	
-#endif		
 	
-	printf("[%d|%d|%d|%d][%ld.%06ld|%ld.%06ld|%ld.%06ld][%ld.%06ld]%ld.%06ld\n", \
+	printf("[%d|%d|%d|%d][%ld.%06ld|%ld.%06ld][%ld.%06ld|%ld.%06ld][%ld.%06ld|%ld.%06ld]%ld.%06ld\n", \
 		msg.owner,	\
 		msg.cnt,	\
 		msg.req_dur,	\
 		msg.rsp_dur,	\
-		msg.server_recved.tv_sec%1000,	\
-		msg.server_recved.tv_usec,	\
 		msg.server_started.tv_sec%1000,	\
 		msg.server_started.tv_usec,	\
 		msg.server_finished.tv_sec%1000,	\
 		msg.server_finished.tv_usec,	\
 		msg.proxy_started.tv_sec%1000,	\
 		msg.proxy_started.tv_usec,	\
+		msg.proxy_finished.tv_sec%1000,	\
+		msg.proxy_finished.tv_usec,	\
+		msg.client_started.tv_sec%1000,	\
+		msg.client_started.tv_usec,	\
+		msg.client_finished.tv_sec%1000,	\
+		msg.client_finished.tv_usec,	\
 		timeTrans.tv_sec%1000,	\
-		timeTrans.tv_usec	\
+		timeTrans.tv_usec	
 		);
 		
 		return 0;
+}
+
+int handleMessage(struct __message msg)
+{
+	struct timeval timeFinished;
+	
+	gettimeofday(&timeFinished, NULL);
+	msg.client_finished.tv_sec = timeFinished.tv_sec;
+	msg.client_finished.tv_usec = timeFinished.tv_usec;
+	
+	dumpMessage(msg);
+	
+	return 0;
 }
 
 
@@ -97,7 +109,7 @@ int main(int argc, char *argv[])
 {
 	char line[MAXLINE], message[MAXLINE+1];
 	int n, pid;
-	struct sockaddr_in server_addr;
+	struct sockaddr_in proxy_addr;
 	int maxfdp1;
 	int s;
 	fd_set read_fds;
@@ -105,13 +117,13 @@ int main(int argc, char *argv[])
 	struct __message msg = {0x0, };
 	struct __message resp = {0x0, };
 	
-	if(argc != 4)
+	if(argc != 3)
 	{
-		printf("usage : %s [server_ip#] [port#] [name]\n", argv[0]);
+		printf("usage : %s [proxy_ip#] [proxy_port#]\n", argv[0]);
 		exit(0);
-	}	//if(arvc
+	}	//if(argc
 			
-	sprintf(name, "[%s]", argv[3]);
+	//sprintf(name, "[%s]", argv[3]);
 	
 	if( (s=socket(PF_INET, SOCK_STREAM, 0)) < 0 )
 	{
@@ -119,12 +131,12 @@ int main(int argc, char *argv[])
 		exit(0);
 	}	//if( (s=socket
 	
-	bzero((char *)&server_addr, sizeof(struct sockaddr_in));
-	server_addr.sin_family = AF_INET;
-	server_addr.sin_addr.s_addr = inet_addr(argv[1]);
-	server_addr.sin_port = htons(atoi(argv[2]));
+	bzero((char *)&proxy_addr, sizeof(struct sockaddr_in));
+	proxy_addr.sin_family = AF_INET;
+	proxy_addr.sin_addr.s_addr = inet_addr(argv[1]);
+	proxy_addr.sin_port = htons(atoi(argv[2]));
 	
-	if(connect(s, (struct sockaddr *)&server_addr, sizeof(struct sockaddr_in)) < 0)
+	if(connect(s, (struct sockaddr *)&proxy_addr, sizeof(struct sockaddr_in)) < 0)
 	{
 		printf("client : connect failed!\n");
 		exit(0);
@@ -137,20 +149,31 @@ int main(int argc, char *argv[])
 	maxfdp1 = s + 1;
 	FD_ZERO(&read_fds);
 	
-	//initMessage(&msg);
+	memset(&msg, 0x0, sizeof(struct __message));
+	srand(time(NULL));
+	msg.owner = random()%10000;
 	
-	while(1)
-	{
+#if !ENABLE_REPEATE
 		initMessage(&msg);
-		
-		FD_SET(0, &read_fds);
-		FD_SET(s, &read_fds);
-#if 1
 		if(send(s, &msg, sizeof(struct __message), 0) < 0)
 		{
 			printf("client : send failed!\n");
 		}	//if(send(
-#endif
+#endif	//#if 0
+
+	while(1)
+	{
+		FD_SET(0, &read_fds);
+		FD_SET(s, &read_fds);
+
+#if ENABLE_REPEATE
+		initMessage(&msg);
+		
+		if(send(s, &msg, sizeof(struct __message), 0) < 0)
+		{
+			printf("client : send failed!\n");
+		}	//if(send(
+#endif			
 		
 		if(select(maxfdp1, &read_fds, (fd_set *)0, (fd_set *)0, (struct timeval *)0) < 0)
 		{
@@ -161,42 +184,11 @@ int main(int argc, char *argv[])
 		if(FD_ISSET(s, &read_fds))
 		{
 			int size;
-#if 1
 			if((size = recv(s, &resp, sizeof(struct __message), 0)) > 0)
 			{
-				dumpMessage(resp);
-			}
-#else			
-			if((size = recv(s, message, MAXLINE, 0)) > 0)
-			{
-				message[size] = '\0';
-				printf("%s \n", message);
-			}	//if((size = recv(				
-#endif				
+				handleMessage(resp);
+			} //if((size
 		}	//if(FD_ISSET(
-
-#if 1
-		;
-#else					
-		if(FD_ISSET(0, &read_fds)) 
-		{
-			if(fgets(message, MAXLINE, stdin))
-			{				
-				sprintf(line, "%s %s", name, message);
-				if(send(s, line, strlen(line), 0) < 0)
-				{
-					printf("client : send failed!\n");
-				}	//if(send(
-				
-				if(strstr(message, escapechar) != NULL)
-				{
-					printf("Good-bye!\n");
-					close(s);
-					exit(0);
-				}	//if(strstr(
-			}	//if(fgets(
-		}	//if(FD_ISSET(
-#endif		
 	}	//while(1)
 	
 	return 0;

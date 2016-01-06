@@ -1,6 +1,6 @@
 /*
-	build : gcc -o resource_server resource_server.c -lpthread	
-	execution : ./resource_server 1024
+	build : gcc -o resource_proxy resource_proxy.c -lpthread	
+	execution : ./resource_proxy 2048 127.0.0.1 1024 
 */
  
 
@@ -21,7 +21,7 @@
 
 #define MAXLINE		(1024)
 #define MAX_SOCK 	(1024)
-#define DELAY_DUMMY		(500*1000)		//MIN:10ms
+#define DELAY_DUMMY		(50*1000)
 
 int getFdMax(int);
 void removeClient(int);
@@ -29,9 +29,9 @@ void removeClient(int);
 int g_piFdMax;
 int g_iClientMax = 0;
 int g_piSocketClient[MAX_SOCK] = {0, };
-//char *escapechar = "exit";
+char *escapechar = "exit";
 
-pthread_mutex_t m_lock;
+//pthread_mutex_t m_lock;
 
 struct __message {
 	int iFd;
@@ -60,36 +60,48 @@ struct __client_head {
 	struct __client *client;
 };
 
-//struct __message msg;
+int g_iSocketServer = 0;
+
 
 
 int handleMessage(struct __message *arg)
 {
 	struct timeval timeStart, timeEnd;
-	struct __message msg;
+	struct __message msg = {0x0, };
+	struct __message resp = {0x0, };
 
 	memcpy(&msg, arg, sizeof(struct __message));
 
-	gettimeofday(&timeStart, NULL);
-	
-#if ENABLE_MUTEX	
-	pthread_mutex_lock(&m_lock);
-#endif
-    		
 	//TODO: handle packet
-	usleep(DELAY_DUMMY);
-	    		
-#if ENABLE_MUTEX
-	pthread_mutex_unlock(&m_lock);
-#endif	//#if ENABLE_MUTEX
-	
+	gettimeofday(&timeStart, NULL);
+
+	//TODO: handle packet
+	//usleep(DELAY_DUMMY);
+	if(send(g_iSocketServer, &msg, sizeof(struct __message), 0) < 0)
+	{
+		printf("proxy : send failed!\n");
+	}	//if(send(
+
+		int size;
+		if((size = recv(g_iSocketServer, &resp, sizeof(struct __message), 0)) > 0)
+		{
+			msg.server_recved.tv_sec = resp.server_recved.tv_sec;
+			msg.server_recved.tv_sec = resp.server_recved.tv_sec;
+			msg.server_started.tv_sec = resp.server_started.tv_sec;
+			msg.server_started.tv_usec = resp.server_started.tv_usec;
+			msg.server_finished.tv_sec = resp.server_finished.tv_sec;
+			msg.server_finished.tv_usec = resp.server_finished.tv_usec;
+		} //if((size
+    			
 	gettimeofday(&timeEnd, NULL);
 
 	printf("[%d]%d-%d\n", msg.owner, msg.cnt, msg.req_dur);
-	msg.server_started.tv_sec = timeStart.tv_sec;
-	msg.server_started.tv_usec = timeStart.tv_usec;
-	msg.server_finished.tv_sec = timeEnd.tv_sec;
-	msg.server_finished.tv_usec = timeEnd.tv_usec;
+	//msg.proxy_recved.tv_sec = timeRecv.tv_sec;
+	//msg.proxy_recved.tv_usec = timeRecv.tv_usec;
+	msg.proxy_started.tv_sec = timeStart.tv_sec;
+	msg.proxy_started.tv_usec = timeStart.tv_usec;
+	msg.proxy_finished.tv_sec = timeEnd.tv_sec;
+	msg.proxy_finished.tv_usec = timeEnd.tv_usec;
 
 	msg.rsp_dur = 1000;	
 	
@@ -105,52 +117,81 @@ void *pthread_func(void *arg)
 	return NULL;
 }
 
+int initServerConnection(struct sockaddr_in server_addr)
+{
+	if((g_iSocketServer=socket(PF_INET, SOCK_STREAM, 0)) < 0 )
+	{
+		printf("proxy : socket failed!\n");
+		return 0;
+	}	//if( (s=socket
+	
+	if(connect(g_iSocketServer, (struct sockaddr *)&server_addr, sizeof(struct sockaddr_in)) < 0)
+	{
+		printf("proxy : connect failed!\n");
+		return 0;
+	}
+	else
+	{
+		printf("proxy : connected server!\n");
+	}	//if(connect(
+	
+	return 1;
+}
+
 int main(int argc , char *argv[])
 {
-		char rline[MAXLINE], my_msg[MAXLINE];
-		//char *start = "Connected to server\n";
-		int i, j, n;
-		int s, client_fd, client;
-		fd_set read_fds;
-		struct sockaddr_in client_addr, server_addr;
+	char rline[MAXLINE], my_msg[MAXLINE];
+	//char *start = "Connected to server\n";
+	int i, j, n;
+	int s, client_fd, client;
+	fd_set read_fds;
+	struct sockaddr_in server_addr;
+	struct sockaddr_in proxy_addr;
+	struct sockaddr_in client_addr;
 		
-		struct __message rcv = { 0x0, };
-		struct __message trans = { 0x0, };
+	struct __message rcv = { 0x0, };
+	struct __message trans = { 0x0, };
 		
-		pthread_mutex_init(&m_lock, NULL);
+	//pthread_mutex_init(&m_lock, NULL);
 		
-		if(argc != 2)
-		{
-			printf("usage : %s [port#]\n", argv[0]);
-			exit(0);
-		}	//if(argc != 2)
+	if(argc != 4)
+	{
+		printf("usage : %s [proxy_port#] [server_ip#] [server_port#] \n", argv[0]);
+		exit(0);
+	}	//if(argc
+	
+	bzero((char *)&proxy_addr, sizeof(struct sockaddr_in));
+	server_addr.sin_family = AF_INET;
+	server_addr.sin_addr.s_addr = inet_addr(argv[2]);
+	server_addr.sin_port = htons(atoi(argv[3]));
+	initServerConnection(server_addr);
 			
-		if((s = socket(PF_INET, SOCK_STREAM, 0)) < 0)
-		{
-			printf("server : socket failed!\n");
-			exit(0);
-		}	//if((s = socket
+	if((s = socket(PF_INET, SOCK_STREAM, 0)) < 0)
+	{
+		printf("server : socket failed!\n");
+		exit(0);
+	}	//if((s = socket
 		
-		int option = 1;
-		setsockopt( s, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(int) );
+	int option = 1;
+	setsockopt( s, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(int) );
 			
-		bzero((char *)&server_addr, sizeof(struct sockaddr_in));
-		server_addr.sin_family = AF_INET;
-		server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-		server_addr.sin_port = htons(atoi(argv[1]));
-			
-		if(bind(s, (struct sockaddr  *)&server_addr, sizeof(struct sockaddr_in)) < 0)
-		{
-			printf("server : bind failed!\n");
-			exit(0);
-		}
+	bzero((char *)&proxy_addr, sizeof(struct sockaddr_in));
+	proxy_addr.sin_family = AF_INET;
+	proxy_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+	proxy_addr.sin_port = htons(atoi(argv[1]));
 		
-		listen(s, 5);
+	if(bind(s, (struct sockaddr  *)&proxy_addr, sizeof(struct sockaddr_in)) < 0)
+	{
+		printf("server : bind failed!\n");
+		exit(0);
+	}
+		
+	listen(s, 5);
 			
-		g_piFdMax = s + 1;
+	g_piFdMax = s + 1;
 
-		while(1)
-		{
+	while(1)
+	{
 			FD_ZERO(&read_fds);
 			FD_SET(s, &read_fds);
 			
@@ -201,11 +242,11 @@ int main(int argc , char *argv[])
 						continue;
 					}
 
-#if ENABLE_HANDLETHREAD
+#if ENABLE_HANDLETHREAD 
 					struct timeval timeRecv;
 					gettimeofday(&timeRecv, NULL);
-					rcv.server_recved.tv_sec = timeRecv.tv_sec;
-					rcv.server_recved.tv_usec = timeRecv.tv_usec;
+					rcv.proxy_recved.tv_sec = timeRecv.tv_sec;
+					rcv.proxy_recved.tv_usec = timeRecv.tv_usec;
 					
 					pthread_t ptId = 0;
 					rcv.iFd = g_piSocketClient[i];
@@ -219,8 +260,8 @@ int main(int argc , char *argv[])
 #endif
 				} //if(FD_ISSET(	
 			} //for(i=0
-		} //while(1)
-		return 0;
+	} //while(1)
+	return 0;
 }
 
 
