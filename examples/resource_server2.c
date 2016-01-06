@@ -17,6 +17,7 @@
 
 #define ENABLE_LINKEDLIST				0		//1:using linked list for managing clients
 #define ENABLE_HANDLETHREAD			1		//1:handling messages with thread
+#define ENABLE_MUTEX						1		//1:using mutex for handling resource
 
 #define MAXLINE		(1024)
 #define MAX_SOCK 	(1024)
@@ -69,15 +70,21 @@ int handleMessage(struct __message *arg)
 	memcpy(&msg, arg, sizeof(struct __message));
 
 	gettimeofday(&timeRecv, NULL);
+	
+#if ENABLE_MUTEX	
 	pthread_mutex_lock(&m_lock);
+#endif	
     		
 	//TODO: handle packet
 	gettimeofday(&timeStart, NULL);
 	usleep(1000*1000);
     		
+#if ENABLE_MUTEX
 	pthread_mutex_unlock(&m_lock);
-	gettimeofday(&timeEnd, NULL);
+#endif	//#if ENABLE_MUTEX
 	
+	gettimeofday(&timeEnd, NULL);
+
 	printf("[%d]%d-%d\n", msg.owner, msg.cnt, msg.req_dur);
 	msg.server_recved.tv_sec = timeRecv.tv_sec;
 	msg.server_recved.tv_usec = timeRecv.tv_usec;
@@ -200,6 +207,7 @@ int main(int argc , char *argv[])
 					pthread_t ptId = 0;
 					rcv.iFd = g_piSocketClient[i];
 					pthread_create(&ptId, NULL, pthread_func, (void *)&rcv);
+					usleep(1);
 #else			
 					handleMessage(&rcv);
 					memcpy(&trans, &rcv, sizeof(struct __message));

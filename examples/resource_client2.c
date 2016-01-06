@@ -49,11 +49,11 @@ int initMessage(struct __message *msg)
 	msg->owner = random()%10000;
 	msg->cnt++;
 	msg->req_dur = 100;
-	
+
 	gettimeofday(&timeStart, NULL);
 	msg->proxy_started.tv_sec = timeStart.tv_sec;
 	msg->proxy_started.tv_usec = timeStart.tv_usec;
-	
+
 	return 0;
 }
 
@@ -62,9 +62,15 @@ int dumpMessage(struct __message msg)
 	struct timeval timeTrans;
 
 	//TODO: dump response
+#if 0	
 	timeTrans.tv_sec = msg.server_recved.tv_sec - msg.proxy_started.tv_sec;
 	timeTrans.tv_usec = msg.server_recved.tv_usec - msg.proxy_started.tv_usec;
 	if( timeTrans.tv_usec < 0 ) {timeTrans.tv_sec=timeTrans.tv_sec-1; timeTrans.tv_usec=timeTrans.tv_usec + 1000000;	}	
+#else
+	timeTrans.tv_sec = msg.server_recved.tv_sec - msg.proxy_started.tv_sec;
+	timeTrans.tv_usec = msg.server_recved.tv_usec - msg.proxy_started.tv_usec;
+	if( timeTrans.tv_usec < 0 ) {timeTrans.tv_sec=timeTrans.tv_sec-1; timeTrans.tv_usec=timeTrans.tv_usec + 1000000;	}	
+#endif		
 	
 	printf("[%d|%d|%d|%d][%ld.%06ld|%ld.%06ld|%ld.%06ld][%ld.%06ld]%ld.%06ld\n", \
 		msg.owner,	\
@@ -131,10 +137,12 @@ int main(int argc, char *argv[])
 	maxfdp1 = s + 1;
 	FD_ZERO(&read_fds);
 	
-	initMessage(&msg);
+	//initMessage(&msg);
 	
 	while(1)
 	{
+		initMessage(&msg);
+		
 		FD_SET(0, &read_fds);
 		FD_SET(s, &read_fds);
 #if 1
