@@ -52,17 +52,120 @@ struct __message {
 };
 
 struct __client {
+	int iId;
 	int iFd;
+	struct __client *next;
 };
 
-struct __client_head {
-	int cnt;
-	struct __client *client;
+
+struct __resource_cached {
+	int iData;
+	int iAga;		/* milisecond */
+};
+
+struct __resource {
+	char strName[128];
+	int iCachedAge;
+	int iCachedResource;
+	unsigned int iClientNumber;
+	struct __client *observer;
 };
 
 int g_iSocketServer = 0;
 
+struct __resource g_Resource;
 
+
+int initResource()
+{
+	g_Resource.strName[0] = '\0';
+	g_Resource.iCachedAge = 0;
+	g_Resource.iCachedResource = 0;
+	g_Resource.iClientNumber = 0;
+	g_Resource.observer = NULL;
+}
+
+int getResource(struct __resource *resource, int *iResource, int iCached)
+{
+	if( (iCached) && (resource->iCachedAge>0) )
+	{
+		//TODO: get resource from cache
+		*iResource = resource->iCachedResource;
+	}
+	else
+	{
+			//TODO: get resource from server
+	}
+	return 0;
+}
+
+int dumpObserver()
+{
+	struct __client *pObserver; 
+	pObserver = g_Resource.observer;
+	
+	while(pObserver)
+	{
+		printf("id=%d, fd=%d", pObserver->iId, pObserver->iFd);
+		pObserver = pObserver->next;
+	}
+		
+	return 0;
+}
+
+int addObserver(int iId, int iFd)
+{
+	struct __client *pObserver;
+	struct __client *pNew;
+	
+	struct __client *pPrev;
+	
+	pObserver = g_Resource.observer;
+	
+dumpObserver();	
+
+//printf("%s:+++:pObserver=0x%x\n", __func__, pObserver);	
+	
+	while(pObserver)
+	{
+		pPrev = pObserver;
+		//printf("%s:id=%d, fd=%d\n", __func__, pObserver->iId, pObserver->iFd);
+		pObserver = pObserver->next;
+	}
+	
+	pNew = (struct __client *)malloc(sizeof(struct __client));
+	pNew->iId = iId;
+	pNew->iFd = iFd;
+	pNew->next = NULL;
+	
+	pObserver = pNew;
+printf("%s:---:pObserver=0x%x, g_Resource.observer=0x%x\n", __func__, pObserver, g_Resource.observer);
+	
+	return 0;
+}
+
+int removeObserver(int iId, int iFd)
+{
+	struct __client *pObserver; 
+	struct __client *pFront; 
+	struct __client *pRear; 
+	struct __client *pTemp; 
+	pObserver = g_Resource.observer;
+	
+	while(pObserver)
+	{
+		if(iId == pObserver->iId)
+		{
+			//pTemp = pObserver;
+			//pObserver = 
+			;
+		}
+		//printf("id=%d, fd=%d", observer.iId, observer.iFd);
+		pObserver = pObserver->next;
+	}
+	
+	return 0;
+}
 
 int handleMessage(struct __message *arg)
 {
@@ -77,6 +180,11 @@ int handleMessage(struct __message *arg)
 
 	//TODO: handle packet
 	//usleep(DELAY_DUMMY);
+#if 0
+	//TODO: use cached resource
+	addObserver(msg.owner, msg.iFd);
+#else
+	//TODO: simply get resource form server
 	if(send(g_iSocketServer, &msg, sizeof(struct __message), 0) < 0)
 	{
 		printf("proxy : send failed!\n");
@@ -92,6 +200,7 @@ int handleMessage(struct __message *arg)
 			msg.server_finished.tv_sec = resp.server_finished.tv_sec;
 			msg.server_finished.tv_usec = resp.server_finished.tv_usec;
 		} //if((size
+#endif		
     			
 	gettimeofday(&timeEnd, NULL);
 
@@ -160,6 +269,13 @@ int main(int argc , char *argv[])
 		exit(0);
 	}	//if(argc
 	
+	//TODO: init timer handler
+	//initTimerHandler();
+	
+	//TODO: init cached resource struct
+	initResource();
+		
+	//TODO: init server connection
 	bzero((char *)&proxy_addr, sizeof(struct sockaddr_in));
 	server_addr.sin_family = AF_INET;
 	server_addr.sin_addr.s_addr = inet_addr(argv[2]);
@@ -172,9 +288,10 @@ int main(int argc , char *argv[])
 		exit(0);
 	}	//if((s = socket
 		
+
+	//TODO: init proxy connection
 	int option = 1;
 	setsockopt( s, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(int) );
-			
 	bzero((char *)&proxy_addr, sizeof(struct sockaddr_in));
 	proxy_addr.sin_family = AF_INET;
 	proxy_addr.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -185,7 +302,7 @@ int main(int argc , char *argv[])
 		printf("server : bind failed!\n");
 		exit(0);
 	}
-		
+	
 	listen(s, 5);
 			
 	g_piFdMax = s + 1;
@@ -252,7 +369,7 @@ int main(int argc , char *argv[])
 					rcv.iFd = g_piSocketClient[i];
 					pthread_create(&ptId, NULL, pthread_func, (void *)&rcv);
 					//usleep(1);
-#else			
+#else
 					handleMessage(&rcv);
 					memcpy(&trans, &rcv, sizeof(struct __message));
 
@@ -261,6 +378,7 @@ int main(int argc , char *argv[])
 				} //if(FD_ISSET(	
 			} //for(i=0
 	} //while(1)
+	
 	return 0;
 }
 
