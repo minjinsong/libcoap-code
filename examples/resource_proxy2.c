@@ -101,13 +101,16 @@ int getResource(struct __resource *resource, int *iResource, int iCached)
 
 int dumpObserver()
 {
-	struct __client *pObserver; 
-	pObserver = g_Resource.observer;
+	struct __client *client; 
+	client = g_Resource.observer;
 	
-	while(pObserver)
+//printf("%s1:client=0x%x\n", __func__, client);
+	
+	while(client)
 	{
-		printf("id=%d, fd=%d", pObserver->iId, pObserver->iFd);
-		pObserver = pObserver->next;
+		//printf("%s:client=0x%x, id=%d, fd=%d\n", __func__, client,  client->iId, client->iFd);
+		printf("%s:id=%d, fd=%d\n", __func__, client->iId, client->iFd);
+		client = client->next;
 	}
 		
 	return 0;
@@ -117,29 +120,48 @@ int addObserver(int iId, int iFd)
 {
 	struct __client *pObserver;
 	struct __client *pNew;
-	
 	struct __client *pPrev;
-	
-	pObserver = g_Resource.observer;
-	
-dumpObserver();	
-
-//printf("%s:+++:pObserver=0x%x\n", __func__, pObserver);	
-	
-	while(pObserver)
-	{
-		pPrev = pObserver;
-		//printf("%s:id=%d, fd=%d\n", __func__, pObserver->iId, pObserver->iFd);
-		pObserver = pObserver->next;
-	}
+	int fAdd;
 	
 	pNew = (struct __client *)malloc(sizeof(struct __client));
 	pNew->iId = iId;
 	pNew->iFd = iFd;
 	pNew->next = NULL;
 	
-	pObserver = pNew;
-printf("%s:---:pObserver=0x%x, g_Resource.observer=0x%x\n", __func__, pObserver, g_Resource.observer);
+//printf("%s:+++:pObserver=0x%x\n", __func__, pObserver);	
+	if(g_Resource.observer == NULL)
+	{
+		//printf("%s1:id=%d, fd=%d, g_Resource.observer=0x%x, pNew=0x%x\n", __func__, pNew->iId, pNew->iFd, g_Resource.observer, pNew);
+		g_Resource.observer = pNew;
+	}
+	else
+	{	
+		pObserver = g_Resource.observer;
+		
+		fAdd = 1;
+		while(pObserver)
+		{
+			if(pObserver->iId == iId)
+			{
+				if(pObserver->iFd != iFd)
+					pObserver->iFd = iFd;
+				
+				fAdd = 0;
+				break;
+			}
+			else 
+			{
+				pPrev = pObserver;
+				//printf("%s2:id=%d, fd=%d, g_Resource.observer=0x%x, pNew=0x%x\n", __func__, pNew->iId, pNew->iFd, g_Resource.observer, pNew);
+				pObserver = pObserver->next;
+			}
+		}
+		
+		if(fAdd)
+			pPrev->next = pNew;
+	}
+		
+//printf("%s:---:pObserver=0x%x, g_Resource.observer=0x%x\n", __func__, pObserver, g_Resource.observer);
 	
 	return 0;
 }
@@ -180,10 +202,13 @@ int handleMessage(struct __message *arg)
 
 	//TODO: handle packet
 	//usleep(DELAY_DUMMY);
-#if 0
+#if 1
 	//TODO: use cached resource
 	addObserver(msg.owner, msg.iFd);
-#else
+	dumpObserver();
+#endif
+
+#if 1
 	//TODO: simply get resource form server
 	if(send(g_iSocketServer, &msg, sizeof(struct __message), 0) < 0)
 	{
@@ -306,6 +331,16 @@ int main(int argc , char *argv[])
 	listen(s, 5);
 			
 	g_piFdMax = s + 1;
+
+
+//Minjin, 
+/*
+addObserver(1001, 9000);
+addObserver(1002, 9001);
+addObserver(1005, 9003);
+addObserver(1003, 9004);
+dumpObserver();
+*/
 
 	while(1)
 	{
