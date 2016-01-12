@@ -4,7 +4,7 @@
 
 #define MAXLINE									(1024)
 #define MAX_SOCK 								(1024)
-#define RESOURCE_DEFAULT_DELAY	(500*1000)		//MIN:10ms
+#define RESOURCE_DEFAULT_DELAY	(1000*1000)		//MIN:10ms
 
 struct __message {
 	int iFd;
@@ -13,6 +13,8 @@ struct __message {
 	unsigned int cmd;
 	unsigned int req_dur;
 	unsigned int rsp_dur;
+	unsigned int resource;
+	unsigned int age;		//ms
 	struct timeval server_recved;
 	struct timeval server_started;
 	struct timeval server_finished;
@@ -38,8 +40,9 @@ struct __resource_cached {
 
 struct __resource {
 	char strName[128];
-	int iCachedAge;
 	int iCachedResource;
+	int iCachedAge;
+	struct timeval tCachedTime;
 	unsigned int iClientNumber;
 	struct __client *observer;
 };

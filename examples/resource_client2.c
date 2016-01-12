@@ -107,8 +107,6 @@ int main(int argc, char *argv[])
 		g_monInterval = atoi(argv[4]);
 	}
 	
-	//sprintf(name, "[%s]", argv[3]);
-	
 	if( (s=socket(PF_INET, SOCK_STREAM, 0)) < 0 )
 	{
 		printf("client : socket failed!\n");
@@ -182,6 +180,12 @@ int main(int argc, char *argv[])
 				handleMessage(resp);
 			} //if((size
 		}	//if(FD_ISSET(
+		
+		if(g_monMode == RESOURCE_CMD_GET)
+		{
+			//usleep(g_monInterval*1000);
+			usleep(250*1000);
+		}
 	}	//while(1)
 	
 	return 0;
