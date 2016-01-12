@@ -14,14 +14,7 @@
 #include <string.h>
 #include <time.h>
 #include <pthread.h>
-
-#define ENABLE_LINKEDLIST				0		//1:using linked list for managing clients
-#define ENABLE_HANDLETHREAD			1		//1:handling messages with thread
-#define ENABLE_MUTEX						1		//1:using mutex for handling resource
-
-#define MAXLINE		(1024)
-#define MAX_SOCK 	(1024)
-#define DELAY_DUMMY		(500*1000)		//MIN:10ms
+#include "resource.h"
 
 int getFdMax(int);
 void removeClient(int);
@@ -32,36 +25,6 @@ int g_piSocketClient[MAX_SOCK] = {0, };
 //char *escapechar = "exit";
 
 pthread_mutex_t m_lock;
-
-struct __message {
-	int iFd;
-	unsigned int owner;
-	unsigned int cnt;
-	unsigned int cmd;
-	unsigned int req_dur;
-	unsigned int rsp_dur;
-	struct timeval server_recved;
-	struct timeval server_started;
-	struct timeval server_finished;
-	struct timeval proxy_recved;
-	struct timeval proxy_started;
-	struct timeval proxy_finished;
-	struct timeval client_recved;
-	struct timeval client_started;
-	struct timeval client_finished;
-};
-
-struct __client {
-	int iFd;
-};
-
-struct __client_head {
-	int cnt;
-	struct __client *client;
-};
-
-//struct __message msg;
-
 
 int handleMessage(struct __message *arg)
 {
@@ -77,7 +40,7 @@ int handleMessage(struct __message *arg)
 #endif
     		
 	//TODO: handle packet
-	usleep(DELAY_DUMMY);
+	usleep(RESOURCE_DEFAULT_DELAY);
 	    		
 #if ENABLE_MUTEX
 	pthread_mutex_unlock(&m_lock);

@@ -1,6 +1,6 @@
 /*
 	build : gcc -o client_chat client_chat.c
-	execution : ./resource_client2 127.0.0.1 2048
+	execution : ./resource_client2 127.0.0.1 2048 1 200
 */
  
 #include <stdio.h>
@@ -11,33 +11,9 @@
 #include <sys/time.h>
 #include <string.h>
 #include <time.h>
+#include "resource.h"
 
 #define ENABLE_REPEATE				1		//1:send message to server repeatly
-
-#define MAXLINE			512
-#define MAX_SOCK		(1024*1024)
-
-char *escapechar = "exit";
-//char name[10];
-
-
-struct __message {
-	int iFd;
-	unsigned int owner;
-	unsigned int cnt;
-	unsigned int cmd;
-	unsigned int req_dur;
-	unsigned int rsp_dur;
-	struct timeval server_recved;
-	struct timeval server_started;
-	struct timeval server_finished;
-	struct timeval proxy_recved;
-	struct timeval proxy_started;
-	struct timeval proxy_finished;
-	struct timeval client_recved;
-	struct timeval client_started;
-	struct timeval client_finished;
-};
 
 int initMessage(struct __message *msg)
 {
@@ -104,6 +80,8 @@ int handleMessage(struct __message msg)
 	return 0;
 }
 
+int g_monMode = RESOURCE_CMD_GET;
+int g_monInterval = 1000;
 
 int main(int argc, char *argv[])
 {
@@ -117,12 +95,18 @@ int main(int argc, char *argv[])
 	struct __message msg = {0x0, };
 	struct __message resp = {0x0, };
 	
-	if(argc != 3)
+	if(argc < 3)
 	{
-		printf("usage : %s [proxy_ip#] [proxy_port#]\n", argv[0]);
+		printf("usage1 : %s [proxy_ip#] [proxy_port#]\n", argv[0]);
+		printf("usage2 : %s [proxy_ip#] [proxy_port#] [monitoring_mode#] [monitoring_interval#]\n", argv[0]);
 		exit(0);
 	}	//if(argc
-			
+	else if(argc == 5)
+	{
+		g_monMode = atoi(argv[3]);
+		g_monInterval = atoi(argv[4]);
+	}
+	
 	//sprintf(name, "[%s]", argv[3]);
 	
 	if( (s=socket(PF_INET, SOCK_STREAM, 0)) < 0 )
@@ -153,27 +137,36 @@ int main(int argc, char *argv[])
 	srand(time(NULL));
 	msg.owner = random()%10000;
 	
-#if !ENABLE_REPEATE
+//#if !ENABLE_REPEATE
+	if(g_monMode == RESOURCE_CMD_REGISTER)
+	{
 		initMessage(&msg);
+		msg.cmd = RESOURCE_CMD_REGISTER;
+		msg.req_dur = g_monInterval;
 		if(send(s, &msg, sizeof(struct __message), 0) < 0)
 		{
 			printf("client : send failed!\n");
 		}	//if(send(
-#endif	//#if 0
+	}
+//#endif	//#if 0
 
 	while(1)
 	{
 		FD_SET(0, &read_fds);
 		FD_SET(s, &read_fds);
 
-#if ENABLE_REPEATE
-		initMessage(&msg);
-		
-		if(send(s, &msg, sizeof(struct __message), 0) < 0)
+//#if ENABLE_REPEATE	
+		if(g_monMode == RESOURCE_CMD_GET)
 		{
-			printf("client : send failed!\n");
-		}	//if(send(
-#endif			
+			initMessage(&msg);
+			msg.cmd = RESOURCE_CMD_GET;
+			
+			if(send(s, &msg, sizeof(struct __message), 0) < 0)
+			{
+				printf("client : send failed!\n");
+			}	//if(send(
+		}
+//#endif			
 		
 		if(select(maxfdp1, &read_fds, (fd_set *)0, (fd_set *)0, (struct timeval *)0) < 0)
 		{
