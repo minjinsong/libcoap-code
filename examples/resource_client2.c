@@ -42,29 +42,35 @@ int dumpMessage(struct __message msg)
 	timeTrans.tv_sec = msg.client_finished.tv_sec - msg.client_started.tv_sec;
 	timeTrans.tv_usec = msg.client_finished.tv_usec - msg.client_started.tv_usec;
 	if( timeTrans.tv_usec < 0 ) {timeTrans.tv_sec=timeTrans.tv_sec-1; timeTrans.tv_usec=timeTrans.tv_usec + 1000000;	}	
-	
-	printf("[%d|%d|%d|%d][%ld.%06ld|%ld.%06ld][%ld.%06ld|%ld.%06ld][%ld.%06ld|%ld.%06ld]%ld.%06ld\n", \
+	/*
+	printf("[%d|%d]resp=%ld.%06ldus,age=%d(%ld.%03ld|%ld.%03ld)(%ld.%03ld|%ld.%03ld)(%ld.%03ld|%ld.%03ld)\n", \
 		msg.owner,	\
 		msg.cnt,	\
-		msg.req_dur,	\
-		msg.rsp_dur,	\
-		msg.server_started.tv_sec%1000,	\
-		msg.server_started.tv_usec,	\
-		msg.server_finished.tv_sec%1000,	\
-		msg.server_finished.tv_usec,	\
-		msg.proxy_started.tv_sec%1000,	\
-		msg.proxy_started.tv_usec,	\
-		msg.proxy_finished.tv_sec%1000,	\
-		msg.proxy_finished.tv_usec,	\
-		msg.client_started.tv_sec%1000,	\
-		msg.client_started.tv_usec,	\
-		msg.client_finished.tv_sec%1000,	\
-		msg.client_finished.tv_usec,	\
 		timeTrans.tv_sec%1000,	\
-		timeTrans.tv_usec	
+		timeTrans.tv_usec,	\
+		msg.age,	\
+		msg.server_started.tv_sec%1000,	\
+		msg.server_started.tv_usec/1000,	\
+		msg.server_finished.tv_sec%1000,	\
+		msg.server_finished.tv_usec/1000,	\
+		msg.proxy_started.tv_sec%1000,	\
+		msg.proxy_started.tv_usec/1000,	\
+		msg.proxy_finished.tv_sec%1000,	\
+		msg.proxy_finished.tv_usec/1000,	\
+		msg.client_started.tv_sec%1000,	\
+		msg.client_started.tv_usec/1000,	\
+		msg.client_finished.tv_sec%1000,	\
+		msg.client_finished.tv_usec/1000
 		);
-		
-		return 0;
+	*/
+	printf("[%d|%d]resp=%ld.%06ldms, age=%d\n", 
+		msg.owner,	\
+		msg.cnt,	\
+		timeTrans.tv_sec%1000,	\
+		timeTrans.tv_usec,	\
+		msg.age
+	);
+	return 0;
 }
 
 int handleMessage(struct __message msg)
@@ -184,7 +190,7 @@ int main(int argc, char *argv[])
 		if(g_monMode == RESOURCE_CMD_GET)
 		{
 			//usleep(g_monInterval*1000);
-			usleep(250*1000);
+			usleep(g_monInterval*1000);
 		}
 	}	//while(1)
 	

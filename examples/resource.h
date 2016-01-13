@@ -33,11 +33,6 @@ struct __client {
 };
 
 
-struct __resource_cached {
-	int iData;
-	int iAga;		/* milisecond */
-};
-
 struct __resource {
 	char strName[128];
 	int iCachedResource;
@@ -53,3 +48,4 @@ enum {
 	RESOURCE_CMD_SET,
 	RESOURCE_CMD_MAX
 };
+

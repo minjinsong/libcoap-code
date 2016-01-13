@@ -23,6 +23,7 @@ int g_iClientMax = 0;
 int g_piSocketClient[MAX_SOCK] = {0, };
 
 pthread_mutex_t m_lock;
+
 int g_iSocketServer = 0;
 struct __resource g_Resource;
 
@@ -184,7 +185,9 @@ int isCachedDataValid(struct timeval curTime)
 	struct timeval timeRet;
 	int ret = 0;
 //printf("g_Resource.iCachedAge=%d, g_Resource.tCachedTime.tv_sec=%ld\n", g_Resource.iCachedAge, g_Resource.tCachedTime.tv_sec);
-
+	
+	//pthread_mutex_lock(&m_lock);
+	
 	if( (g_Resource.iCachedAge>0) && (g_Resource.tCachedTime.tv_sec!=0) )
 	{
 		timeB.tv_sec = 0;
@@ -211,6 +214,9 @@ int isCachedDataValid(struct timeval curTime)
 	{
 		ret = 0;
 	}
+	
+	//pthread_mutex_unlock(&m_lock);
+
 	return ret;
 }
 
@@ -255,6 +261,9 @@ int handleMessage(struct __message *arg)
 	//TODO: handle packet
 	gettimeofday(&timeStart, NULL);
 
+	//TODO: wait until other request responded
+	//pthread_mutex_lock(&m_lock);
+
 	//TODO: use cached resource
 	if(msg.cmd == RESOURCE_CMD_REGISTER)
 	{
@@ -295,18 +304,19 @@ int handleMessage(struct __message *arg)
 			//msg.resource = resp.resource;
 			msg.rsp_dur = g_Resource.iCachedAge;
 			msg.resource = g_Resource.iCachedResource;
+			msg.age = RESOURCE_DEFAULT_DELAY/1000 - g_Resource.iCachedAge;
 			
 			//TODO: set cached with information
 			//g_Resource.iCachedResource = resp.resource;
 			//g_Resource.iCachedAge = resp.rsp_dur;
 			memcpy(&g_Resource.tCachedTime, &timeEnd, sizeof(struct timeval));
-			/*
-			printf("%s3:iCachedResource=%d, iCachedAge=%d, tCachedTime=%ld\n", 
-				__func__, 
+			
+			printf("cached! owner=%d, iCachedResource=%d, iCachedAge=%d\n", 
+				msg.owner,
 				g_Resource.iCachedResource, 
-				g_Resource.iCachedAge, 
-				g_Resource.tCachedTime.tv_sec%1000);
-			*/
+				g_Resource.iCachedAge
+				);
+			
 //usleep(500*1000);
 			//TODO: send information as response from proxy to client
 			int temp = send(msg.iFd, &msg, sizeof(struct __message), 0);
@@ -314,6 +324,8 @@ int handleMessage(struct __message *arg)
 		}
 		else
 		{
+			//pthread_mutex_lock(&m_lock);
+			
 			//TODO: send information request from a proxy to a resource server
 			if(send(g_iSocketServer, &msg, sizeof(struct __message), 0) < 0)
 			{
@@ -344,21 +356,26 @@ int handleMessage(struct __message *arg)
 			
 			msg.rsp_dur = resp.rsp_dur;
 			msg.resource = resp.resource;
+			msg.age = 0;
 			
 			//TODO: set cached with information
 			g_Resource.iCachedResource = resp.resource;
 			g_Resource.iCachedAge = resp.rsp_dur;
 			memcpy(&g_Resource.tCachedTime, &timeEnd, sizeof(struct timeval));
-			printf("%s1:iCachedResource=%d, iCachedAge=%d, tCachedTime=%ld\n", 
-				__func__, 
+			printf("not cached! owner=%d, iCachedResource=%d, iCachedAge=%d, tCachedTime=%ld\n", 
+				msg.owner,
 				g_Resource.iCachedResource, 
 				g_Resource.iCachedAge, 
 				g_Resource.tCachedTime.tv_sec%1000);
-			
+				
+			//pthread_mutex_unlock(&m_lock);
+				
 			//TODO: send information as response from proxy to client
 			int temp = send(msg.iFd, &msg, sizeof(struct __message), 0);
 		}
 	}
+	
+	//pthread_mutex_unlock(&m_lock);
 		
 	return 0;
 }
@@ -432,7 +449,7 @@ int main(int argc , char *argv[])
 	struct __message rcv = { 0x0, };
 	struct __message trans = { 0x0, };
 		
-	//pthread_mutex_init(&m_lock, NULL);
+	pthread_mutex_init(&m_lock, NULL);
 		
 	if(argc != 4)
 	{

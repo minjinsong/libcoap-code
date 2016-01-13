@@ -54,8 +54,8 @@ int handleMessage(struct __message *arg)
 	msg.server_finished.tv_sec = timeEnd.tv_sec;
 	msg.server_finished.tv_usec = timeEnd.tv_usec;
 
-	//msg.resource =  1;
-	msg.rsp_dur = 500;	
+	msg.resource =  timeEnd.tv_sec%10000;
+	msg.rsp_dur = RESOURCE_DEFAULT_DELAY/1000;	
 	
 	int temp = send(msg.iFd, &msg, sizeof(struct __message), 0);
 
