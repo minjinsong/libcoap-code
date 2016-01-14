@@ -34,14 +34,49 @@ int initMessage(struct __message *msg)
 	return 0;
 }
 
+int subTime(struct timeval *tRet, struct timeval val1, struct timeval val2)
+{
+	struct timeval tTemp;
+	
+	tRet->tv_sec = val1.tv_sec - val2.tv_sec;
+	tRet->tv_usec = val1.tv_usec - val2.tv_usec;
+	if( tRet->tv_usec < 0 ) {tRet->tv_sec=tRet->tv_sec-1; tRet->tv_usec=tRet->tv_usec + 1000000;	}	
+}
+
 int dumpMessage(struct __message msg)
 {
 	struct timeval timeTrans;
+	struct timeval tSend1;
+	struct timeval tSend2;
+	struct timeval tServer;
+	struct timeval tRecv2;
+	struct timeval tRecv1;
 
 	//TODO: dump response
+	/*
 	timeTrans.tv_sec = msg.client_finished.tv_sec - msg.client_started.tv_sec;
 	timeTrans.tv_usec = msg.client_finished.tv_usec - msg.client_started.tv_usec;
 	if( timeTrans.tv_usec < 0 ) {timeTrans.tv_sec=timeTrans.tv_sec-1; timeTrans.tv_usec=timeTrans.tv_usec + 1000000;	}	
+	*/
+	subTime(&timeTrans, msg.client_finished, msg.client_started);
+	subTime(&tSend1, msg.proxy_started, msg.client_started);
+	if( (msg.server_started.tv_sec>0) && (msg.server_finished.tv_sec>0) )
+	{
+		subTime(&tSend2, msg.server_started, msg.proxy_started);
+		subTime(&tServer, msg.server_finished, msg.server_started);
+		subTime(&tRecv2, msg.proxy_finished, msg.server_finished);
+	}
+	else
+	{
+		tSend2.tv_sec = 0;
+		tSend2.tv_usec = 0;
+		tServer.tv_sec = 0;
+		tServer.tv_usec = 0;
+		tRecv2.tv_sec = 0;
+		tRecv2.tv_usec = 0;
+	}
+	
+	subTime(&tRecv1, msg.client_finished, msg.proxy_finished);
 	/*
 	printf("[%d|%d]resp=%ld.%06ldus,age=%d(%ld.%03ld|%ld.%03ld)(%ld.%03ld|%ld.%03ld)(%ld.%03ld|%ld.%03ld)\n", \
 		msg.owner,	\
@@ -50,26 +85,37 @@ int dumpMessage(struct __message msg)
 		timeTrans.tv_usec,	\
 		msg.age,	\
 		msg.server_started.tv_sec%1000,	\
-		msg.server_started.tv_usec/1000,	\
+		msg.server_started.tv_usec,	\
 		msg.server_finished.tv_sec%1000,	\
-		msg.server_finished.tv_usec/1000,	\
+		msg.server_finished.tv_usec,	\
 		msg.proxy_started.tv_sec%1000,	\
-		msg.proxy_started.tv_usec/1000,	\
+		msg.proxy_started.tv_usec,	\
 		msg.proxy_finished.tv_sec%1000,	\
-		msg.proxy_finished.tv_usec/1000,	\
+		msg.proxy_finished.tv_usec,	\
 		msg.client_started.tv_sec%1000,	\
-		msg.client_started.tv_usec/1000,	\
+		msg.client_started.tv_usec,	\
 		msg.client_finished.tv_sec%1000,	\
-		msg.client_finished.tv_usec/1000
+		msg.client_finished.tv_usec
 		);
 	*/
-	printf("[%d|%d]resp=%ld.%06ldms, age=%d\n", 
+	printf("[%d|%d]age=%d, resp=%ld.%06ldms(%ld.%06ld)(%ld.%06ld)(%ld.%06ld)(%ld.%06ld)(%ld.%06ld)\n", 
 		msg.owner,	\
 		msg.cnt,	\
+		msg.age,	\
 		timeTrans.tv_sec%1000,	\
 		timeTrans.tv_usec,	\
-		msg.age
+		tSend1.tv_sec%1000,	\
+		tSend1.tv_usec,	\
+		tSend2.tv_sec%1000,	\
+		tSend2.tv_usec,	\
+		tServer.tv_sec%1000,	\
+		tServer.tv_usec,	\
+		tRecv2.tv_sec%1000,	\
+		tRecv2.tv_usec,	\
+		tRecv1.tv_sec%1000,	\
+		tRecv1.tv_usec
 	);
+	
 	return 0;
 }
 
