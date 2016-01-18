@@ -33,7 +33,7 @@ int initResource()
 	g_Resource.iCachedAge = 0;
 	g_Resource.iCachedResource = 0;
 	g_Resource.iClientNumber = 0;
-	g_Resource.observer = NULL;
+	g_Resource.next = NULL;
 }
 
 int getResource(struct __resource *resource, int *iResource, int iCached)
@@ -53,7 +53,7 @@ int getResource(struct __resource *resource, int *iResource, int iCached)
 int dumpObserver()
 {
 	struct __client *client; 
-	client = g_Resource.observer;
+	client = g_Resource.next;
 	
 //printf("%s1:client=0x%x\n", __func__, client);
 	
@@ -80,15 +80,15 @@ int addObserver(int iId, int iFd)
 	pNew->next = NULL;
 	
 //printf("%s:+++:pObserver=0x%x\n", __func__, pObserver);	
-	if(g_Resource.observer == NULL)
+	if(g_Resource.next == NULL)
 	{
 		//printf("%s1:id=%d, fd=%d, g_Resource.observer=0x%x, pNew=0x%x\n", __func__, pNew->iId, pNew->iFd, g_Resource.observer, pNew);
-		g_Resource.observer = pNew;
+		g_Resource.next = pNew;
 		g_Resource.iClientNumber++;
 	}
 	else
 	{	
-		pObserver = g_Resource.observer;
+		pObserver = g_Resource.next;
 		
 		fAdd = 1;
 		while(pObserver)
@@ -104,7 +104,7 @@ int addObserver(int iId, int iFd)
 			else 
 			{
 				pPrev = pObserver;
-				//printf("%s2:id=%d, fd=%d, g_Resource.observer=0x%x, pNew=0x%x\n", __func__, pNew->iId, pNew->iFd, g_Resource.observer, pNew);
+				//printf("%s2:id=%d, fd=%d, g_Resource.next=0x%x, pNew=0x%x\n", __func__, pNew->iId, pNew->iFd, g_Resource.next, pNew);
 				pObserver = pObserver->next;
 			}
 		}
@@ -116,29 +116,42 @@ int addObserver(int iId, int iFd)
 		}
 	}
 		
-//printf("%s:---:pObserver=0x%x, g_Resource.observer=0x%x\n", __func__, pObserver, g_Resource.observer);
+//printf("%s:---:pObserver=0x%x, g_Resource.next=0x%x\n", __func__, pObserver, g_Resource.next);
 	
 	return 0;
 }
 
-int removeObserver(int iId, int iFd)
+int removeObserver(int iFd)
 {
-	struct __client *pObserver; 
+	struct __client *pClient; 
 	struct __client *pFront; 
 	struct __client *pRear; 
-	struct __client *pTemp; 
-	pObserver = g_Resource.observer;
+	struct __client *pTemp;
+
+//printf("%s:iFd=%d\n", __func__, iFd);
 	
-	while(pObserver)
+	pClient = g_Resource.next;
+
+	if(iFd == pClient->iFd)
 	{
-		if(iId == pObserver->iId)
+		g_Resource.next = pClient->next;
+		free(pClient);
+		g_Resource.iClientNumber--;
+		return 0;
+	}
+	
+	while(pClient)
+	{
+		if(iFd == pClient->iFd)
 		{
-			//pTemp = pObserver;
-			//pObserver = 
-			;
+			pFront->next = pClient->next;
+			free(pClient);
+			g_Resource.iClientNumber--;
+			break;
 		}
-		//printf("id=%d, fd=%d", observer.iId, observer.iFd);
-		pObserver = pObserver->next;
+		//printf("id=%d, fd=%d", pClient.iId, pClient.iFd);
+		pFront = pClient;
+		pClient = pClient->next;
 	}
 	
 	return 0;
@@ -273,26 +286,13 @@ int handleMessage(struct __message *arg)
 	else if (msg.cmd == RESOURCE_CMD_GET)
 	{
 		//TODO: get cached resource
-		//if(timeStart < g_Resource.tCachedTime + maxAge)
-		//if(g_Resource.iCachedResource  && (g_Resource.iCachedAge>0) )
-		if(isCachedDataValid(timeStart))
+		if(0)
+		//if(isCachedDataValid(timeStart))
 		{
-			/*
-			printf("%s2:iCachedResource=%d, iCachedAge=%d, tCachedTime=%ld\n", 
-				__func__, 
-				g_Resource.iCachedResource, 
-				g_Resource.iCachedAge, 
-				g_Resource.tCachedTime.tv_sec%1000);
-			*/
-			//	maxAge = g_Resource.tCachedTime + maxAge - timeStart
-			//	g_Resource.tCachedTime = timeStart
-			//	return cached_value
-			
 			updateCache(timeStart);
 			
 			//TODO: set message with time information		
 			gettimeofday(&timeEnd, NULL);
-			//printf("[%d]%d-%d\n", msg.owner, msg.cnt, msg.req_dur);
 			//msg.proxy_recved.tv_sec = timeRecv.tv_sec;
 			//msg.proxy_recved.tv_usec = timeRecv.tv_usec;
 			msg.proxy_started.tv_sec = timeStart.tv_sec;
@@ -300,8 +300,6 @@ int handleMessage(struct __message *arg)
 			msg.proxy_finished.tv_sec = timeEnd.tv_sec;
 			msg.proxy_finished.tv_usec = timeEnd.tv_usec;
 			
-			//msg.rsp_dur = resp.rsp_dur;
-			//msg.resource = resp.resource;
 			msg.rsp_dur = g_Resource.iCachedAge;
 			msg.resource = g_Resource.iCachedResource;
 			msg.age = RESOURCE_DEFAULT_DELAY/1000 - g_Resource.iCachedAge;
@@ -311,14 +309,12 @@ int handleMessage(struct __message *arg)
 			//g_Resource.iCachedAge = resp.rsp_dur;
 			memcpy(&g_Resource.tCachedTime, &timeEnd, sizeof(struct timeval));
 			
-			/*
 			printf("CACHED! Owner=%d, R=%d, Age=%d\n", 
 				msg.owner,
 				g_Resource.iCachedResource, 
 				g_Resource.iCachedAge
 				);
-			*/
-//usleep(500*1000);
+
 			//TODO: send information as response from proxy to client
 			int temp = send(msg.iFd, &msg, sizeof(struct __message), 0);
 			
@@ -400,15 +396,142 @@ void dumpCurrentTime()
 	//printf("%s:current time = %ld.%ld us\n", __func__, timeCurrent.tv_sec, timeCurrent.tv_usec);
 }
 
+int getResourceFromServer(struct __message *msg)
+{
+	struct __message resp;
+	struct timeval timeEnd;
+	struct timeval timeStart;
+			
+	gettimeofday(&timeStart, NULL);
+			
+	//TODO: send information request from a proxy to a resource server
+	//memset(&msg, 0x0, sizeof(struct __message));
+	if(send(g_iSocketServer, msg, sizeof(struct __message), 0) < 0)
+	{
+		printf("proxy : send failed!\n");
+	}	//if(send(
+
+	//TODO: get information from a resource server to proxy
+	int size;
+	memset(&resp, 0x0, sizeof(struct __message));
+	if((size = recv(g_iSocketServer, &resp, sizeof(struct __message), 0)) > 0)
+	{
+		msg->server_recved.tv_sec = resp.server_recved.tv_sec;
+		msg->server_recved.tv_sec = resp.server_recved.tv_sec;
+		msg->server_started.tv_sec = resp.server_started.tv_sec;
+		msg->server_started.tv_usec = resp.server_started.tv_usec;
+		msg->server_finished.tv_sec = resp.server_finished.tv_sec;
+		msg->server_finished.tv_usec = resp.server_finished.tv_usec;
+	} //if((size
+
+	//TODO: set message with time information			
+	gettimeofday(&timeEnd, NULL);
+	//printf("[%d]%d-%d\n", msg->owner, msg->cnt, msg->req_dur);
+	msg->proxy_recved.tv_sec = 0;//timeRecv.tv_sec;
+	msg->proxy_recved.tv_usec = 0;//timeRecv.tv_usec;
+	msg->proxy_started.tv_sec = timeStart.tv_sec;
+	msg->proxy_started.tv_usec = timeStart.tv_usec;
+	msg->proxy_finished.tv_sec = timeEnd.tv_sec;
+	msg->proxy_finished.tv_usec = timeEnd.tv_usec;
+			
+	msg->rsp_dur = resp.rsp_dur;
+	msg->resource = resp.resource;
+	msg->age = 0;
+			
+	printf("Scheduled! iFd=%d, R=%d, Age=%d, tCachedTime=%ld\n",
+			g_Resource.next->iFd,
+			g_Resource.iCachedResource, 
+			g_Resource.iCachedAge, 
+			g_Resource.tCachedTime.tv_sec%1000);
+			
+	//pthread_mutex_unlock(&m_lock);
+			
+	return 0;
+}
+
 void *pthreadWatchResource(void *arg)
 {
+	struct timeval timeSched;
+	struct timeval timeB;
+	struct timeval timeNow;
+			
 	while(!g_iExit)
 	{
-		//printf("%s:1-g_Resource.iClientNumber=%d\n", __func__, g_Resource.iClientNumber);
+		printf("%s:g_Resource.iClientNumber=%d\n", __func__, g_Resource.iClientNumber);
 		
 		if(g_Resource.iClientNumber)
 		{
-			dumpCurrentTime();
+			//while(1)
+			{
+				//dumpCurrentTime();
+				/*
+				gettimeofday(&timeNow, NULL);
+				if(isBiggerThan(timeNow, timeSched)) break;
+				//usleep(500);
+				usleep(1000*1000);
+				*/
+#if 1	//get resource from server
+			struct __message msg;
+			struct __message resp;
+			getResourceFromServer(&msg);
+#else
+			struct __message msg;
+			struct __message resp;
+			struct timeval timeEnd;
+			struct timeval timeStart;
+			gettimeofday(&timeStart, NULL);
+			
+			//TODO: send information request from a proxy to a resource server
+			if(send(g_iSocketServer, &msg, sizeof(struct __message), 0) < 0)
+			{
+				printf("proxy : send failed!\n");
+			}	//if(send(
+
+			//TODO: get information from a resource server to proxy
+			int size;
+			if((size = recv(g_iSocketServer, &resp, sizeof(struct __message), 0)) > 0)
+			{
+				msg.server_recved.tv_sec = resp.server_recved.tv_sec;
+				msg.server_recved.tv_sec = resp.server_recved.tv_sec;
+				msg.server_started.tv_sec = resp.server_started.tv_sec;
+				msg.server_started.tv_usec = resp.server_started.tv_usec;
+				msg.server_finished.tv_sec = resp.server_finished.tv_sec;
+				msg.server_finished.tv_usec = resp.server_finished.tv_usec;
+			} //if((size
+
+			//TODO: set message with time information			
+			gettimeofday(&timeEnd, NULL);
+			//printf("[%d]%d-%d\n", msg.owner, msg.cnt, msg.req_dur);
+			//msg.proxy_recved.tv_sec = timeRecv.tv_sec;
+			//msg.proxy_recved.tv_usec = timeRecv.tv_usec;
+			msg.proxy_started.tv_sec = 0;//timeStart.tv_sec;
+			msg.proxy_started.tv_usec = 0;//timeStart.tv_usec;
+			msg.proxy_finished.tv_sec = timeEnd.tv_sec;
+			msg.proxy_finished.tv_usec = timeEnd.tv_usec;
+			
+			msg.rsp_dur = resp.rsp_dur;
+			msg.resource = resp.resource;
+			msg.age = 0;
+#endif
+
+			printf("Scheduled! iFd=%d, R=%d, Age=%d, tCachedTime=%ld\n",
+				g_Resource.next->iFd,
+				g_Resource.iCachedResource, 
+				g_Resource.iCachedAge, 
+				g_Resource.tCachedTime.tv_sec%1000);
+				
+			//pthread_mutex_unlock(&m_lock);
+
+			struct __client *client;
+			client = g_Resource.next;
+			while(client)
+			{
+				//TODO: send information as response from proxy to client
+				int temp = send(client->iFd, &msg, sizeof(struct __message), 0);
+				client = client->next;
+			}
+
+			}
 		}
 		usleep(1000*1000);
 	}
@@ -505,6 +628,9 @@ addObserver(1002, 9001);
 addObserver(1005, 9003);
 addObserver(1003, 9004);
 dumpObserver();
+removeObserver(9003);
+printf("\n");
+dumpObserver();
 */
 	pthread_t threadId = 0;
 	pthread_create(&threadId, NULL, pthreadWatchResource, (void *)NULL);
@@ -551,6 +677,8 @@ dumpObserver();
 					memset(&rcv, 0x0, sizeof(struct __message));
 					if((n = recv(g_piSocketClient[i], &rcv, sizeof(struct __message), 0)) <= 0)
 					{
+						removeObserver(g_piSocketClient[i]);
+						dumpObserver();
 						removeClient(i);
 						continue;
 					}
@@ -593,7 +721,7 @@ void removeClient(int index)
 		g_piSocketClient[index] = g_piSocketClient[g_iClientMax-1];
 	}
 	g_iClientMax--;
-	printf("server : user exit, num = %d\n", g_iClientMax);
+	printf("server : user exit, g_piSocketClient[%d]=%d\n", index, g_piSocketClient[index]);
 }	//void removeClient
 
 

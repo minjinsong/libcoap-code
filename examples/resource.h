@@ -40,7 +40,7 @@ struct __resource {
 	int iCachedAge;
 	struct timeval tCachedTime;
 	unsigned int iClientNumber;
-	struct __client *observer;
+	struct __client *next;
 };
 
 enum {
