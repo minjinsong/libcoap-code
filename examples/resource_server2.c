@@ -31,6 +31,9 @@ int handleMessage(struct __message *arg)
 	struct timeval timeStart, timeEnd;
 	struct __message msg;
 
+//TODO: rx delay
+//usleep(8*1000);
+
 	memcpy(&msg, arg, sizeof(struct __message));
 
 	gettimeofday(&timeStart, NULL);
@@ -40,7 +43,10 @@ int handleMessage(struct __message *arg)
 #endif
     		
 	//TODO: handle packet
-	usleep(RESOURCE_DEFAULT_DELAY);
+	//usleep(RESOURCE_DEFAULT_DELAY);
+	
+	//TODO: process delay
+	usleep(1*1000);
 	    		
 #if ENABLE_MUTEX
 	pthread_mutex_unlock(&m_lock);
@@ -48,14 +54,19 @@ int handleMessage(struct __message *arg)
 	
 	gettimeofday(&timeEnd, NULL);
 
-	printf("[%d]%d-%d\n", msg.owner, msg.cnt, msg.req_dur);
 	msg.server_started.tv_sec = timeStart.tv_sec;
 	msg.server_started.tv_usec = timeStart.tv_usec;
 	msg.server_finished.tv_sec = timeEnd.tv_sec;
 	msg.server_finished.tv_usec = timeEnd.tv_usec;
 
 	msg.resource =  timeEnd.tv_sec%10000;
-	msg.rsp_dur = RESOURCE_DEFAULT_DELAY/1000;	
+	//msg.rsp_dur = (RESOURCE_DEFAULT_DELAY*RESOURCE_DELAY_TRUST)/1000;	
+	msg.rsp_dur = (1000000-timeEnd.tv_usec)/1000;	
+	
+	printf("[%d-%d]R=%d.%06ld, Dur=%d\n", msg.owner, msg.cnt, msg.resource, timeEnd.tv_usec, msg.rsp_dur);
+	
+//TODO: tx delay
+//usleep(7*1000);	
 	
 	int temp = send(msg.iFd, &msg, sizeof(struct __message), 0);
 

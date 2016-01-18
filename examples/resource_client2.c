@@ -30,7 +30,6 @@ int initMessage(struct __message *msg)
 	gettimeofday(&timeStart, NULL);
 	msg->client_started.tv_sec = timeStart.tv_sec;
 	msg->client_started.tv_usec = timeStart.tv_usec;
-
 	return 0;
 }
 
@@ -42,6 +41,41 @@ int subTime(struct timeval *tRet, struct timeval val1, struct timeval val2)
 	tRet->tv_usec = val1.tv_usec - val2.tv_usec;
 	if( tRet->tv_usec < 0 ) {tRet->tv_sec=tRet->tv_sec-1; tRet->tv_usec=tRet->tv_usec + 1000000;	}	
 }
+
+int addTimeValue(struct timeval *timeR, struct timeval timeA, struct timeval timeB)
+{
+	if(timeA.tv_usec+timeB.tv_usec > 1000000)
+	{
+		timeR->tv_usec = timeA.tv_usec + timeB.tv_usec - 1000000;
+		timeR->tv_sec = timeA.tv_sec + timeB.tv_sec + 1;
+	}
+	else
+	{
+		timeR->tv_usec = timeA.tv_usec + timeB.tv_usec;
+		timeR->tv_sec = timeA.tv_sec + timeB.tv_sec;
+	}
+	
+	return 0;
+}
+
+int isBiggerThan(struct timeval timeA, struct timeval timeB)
+{
+	int ret = 0;
+	
+	if(timeA.tv_sec > timeB.tv_sec )
+	{
+		ret = 1;
+	}
+	else if(timeA.tv_sec == timeB.tv_sec)
+	{
+		if(timeA.tv_usec > timeB.tv_usec)
+			ret = 1;
+		else
+			ret = 0;
+	}
+	return ret;
+}
+
 
 int dumpMessage(struct __message msg)
 {
@@ -98,9 +132,10 @@ int dumpMessage(struct __message msg)
 		msg.client_finished.tv_usec
 		);
 	*/
-	printf("[%d|%d]age=%d, resp=%ld.%06ldms(%ld.%06ld)(%ld.%06ld)(%ld.%06ld)(%ld.%06ld)(%ld.%06ld)\n", 
+	printf("[%d-%d]R=%d, Age=%d, Rsp=%ld.%06ldms(%ld.%06ld)(%ld.%06ld)(%ld.%06ld)(%ld.%06ld)(%ld.%06ld)\n", 
 		msg.owner,	\
 		msg.cnt,	\
+		msg.resource,	\
 		msg.age,	\
 		timeTrans.tv_sec%1000,	\
 		timeTrans.tv_usec,	\
@@ -186,6 +221,7 @@ int main(int argc, char *argv[])
 	memset(&msg, 0x0, sizeof(struct __message));
 	srand(time(NULL));
 	msg.owner = random()%10000;
+	printf("CLIEND:owner=%d\n", msg.owner);
 	
 //#if !ENABLE_REPEATE
 	if(g_monMode == RESOURCE_CMD_REGISTER)
@@ -236,7 +272,21 @@ int main(int argc, char *argv[])
 		if(g_monMode == RESOURCE_CMD_GET)
 		{
 			//usleep(g_monInterval*1000);
-			usleep(g_monInterval*1000);
+			struct timeval timeSched;
+			struct timeval timeB;
+			struct timeval timeNow;
+			
+			timeB.tv_sec = g_monInterval/1000;
+			timeB.tv_usec = 	(g_monInterval%1000)*1000;
+			
+			addTimeValue(&timeSched, msg.client_started, timeB);
+//printf("timeSched:%ld.%06ld\n", timeSched.tv_sec, timeSched.tv_usec);			
+			while(1)
+			{
+				usleep(1000);
+				gettimeofday(&timeNow, NULL);
+				if(isBiggerThan(timeNow, timeSched)) break;
+			}
 		}
 	}	//while(1)
 	

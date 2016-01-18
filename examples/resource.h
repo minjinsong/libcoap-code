@@ -5,6 +5,7 @@
 #define MAXLINE									(1024)
 #define MAX_SOCK 								(1024)
 #define RESOURCE_DEFAULT_DELAY	(1000*1000)		//MIN:10ms
+#define RESOURCE_DELAY_TRUST		(1.0)					//
 
 struct __message {
 	int iFd;
