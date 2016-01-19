@@ -437,13 +437,12 @@ int getResourceFromServer(struct __message *msg)
 	msg->rsp_dur = resp.rsp_dur;
 	msg->resource = resp.resource;
 	msg->age = 0;
-			
-	printf("Scheduled! iFd=%d, R=%d, Age=%d, tCachedTime=%ld\n",
-			g_Resource.next->iFd,
-			g_Resource.iCachedResource, 
-			g_Resource.iCachedAge, 
-			g_Resource.tCachedTime.tv_sec%1000);
-			
+	
+	//TODO: set cached with information
+	g_Resource.iCachedResource = resp.resource;
+	g_Resource.iCachedAge = resp.rsp_dur;
+	memcpy(&g_Resource.tCachedTime, &timeEnd, sizeof(struct timeval));
+	
 	//pthread_mutex_unlock(&m_lock);
 			
 	return 0;
@@ -457,7 +456,7 @@ void *pthreadWatchResource(void *arg)
 			
 	while(!g_iExit)
 	{
-		printf("%s:g_Resource.iClientNumber=%d\n", __func__, g_Resource.iClientNumber);
+		//printf("%s:g_Resource.iClientNumber=%d\n", __func__, g_Resource.iClientNumber);
 		
 		if(g_Resource.iClientNumber)
 		{
@@ -514,13 +513,12 @@ void *pthreadWatchResource(void *arg)
 			msg.age = 0;
 #endif
 
-			printf("Scheduled! iFd=%d, R=%d, Age=%d, tCachedTime=%ld\n",
-				g_Resource.next->iFd,
+			//pthread_mutex_unlock(&m_lock);
+			
+			printf("Scheduled! R=%d, Age=%d, tCachedTime=%ld\n",
 				g_Resource.iCachedResource, 
 				g_Resource.iCachedAge, 
 				g_Resource.tCachedTime.tv_sec%1000);
-				
-			//pthread_mutex_unlock(&m_lock);
 
 			struct __client *client;
 			client = g_Resource.next;
@@ -530,6 +528,7 @@ void *pthreadWatchResource(void *arg)
 				int temp = send(client->iFd, &msg, sizeof(struct __message), 0);
 				client = client->next;
 			}
+			
 
 			}
 		}

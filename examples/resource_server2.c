@@ -31,6 +31,8 @@ int handleMessage(struct __message *arg)
 	struct timeval timeStart, timeEnd;
 	struct __message msg;
 
+	printf("6 ");
+	
 //TODO: rx delay
 //usleep(8*1000);
 
@@ -42,6 +44,8 @@ int handleMessage(struct __message *arg)
 	pthread_mutex_lock(&m_lock);
 #endif
     		
+   printf("7 ");
+   
 	//TODO: handle packet
 	//usleep(RESOURCE_DEFAULT_DELAY);
 	
@@ -51,6 +55,8 @@ int handleMessage(struct __message *arg)
 #if ENABLE_MUTEX
 	pthread_mutex_unlock(&m_lock);
 #endif	//#if ENABLE_MUTEX
+
+	printf("8 ");
 	
 	gettimeofday(&timeEnd, NULL);
 
@@ -63,12 +69,14 @@ int handleMessage(struct __message *arg)
 	//msg.rsp_dur = (RESOURCE_DEFAULT_DELAY*RESOURCE_DELAY_TRUST)/1000;	
 	msg.rsp_dur = (1000000-timeEnd.tv_usec)/1000;	
 	
-	printf("[%d-%d]R=%d.%06ld, Dur=%d\n", msg.owner, msg.cnt, msg.resource, timeEnd.tv_usec, msg.rsp_dur);
-	
 //TODO: tx delay
 //usleep(7*1000);	
+
+	printf("[%d-%d]R=%d.%06ld, Dur=%d\n", msg.owner, msg.cnt, msg.resource, timeEnd.tv_usec, msg.rsp_dur);
 	
 	int temp = send(msg.iFd, &msg, sizeof(struct __message), 0);
+	
+	//printf("9 ");
 
 	return 0;
 }
@@ -133,13 +141,15 @@ int main(int argc , char *argv[])
 			{
 				FD_SET(g_piSocketClient[i], &read_fds);
 			}	//for(i=0;
-			
+
 			g_piFdMax = getFdMax(s) + 1;
 			if(select(g_piFdMax, &read_fds, (fd_set *)0, (fd_set *)0, (struct timeval *)0) < 0)
 			{
 				printf("server : select failed\n");
 				exit(0);
 			}//if(select
+			
+			printf("2 ");
 				
 			if(FD_ISSET(s, &read_fds))
 			{
@@ -159,10 +169,14 @@ int main(int argc , char *argv[])
 				printf("server : user#%d added!\n", g_iClientMax);
 			}//if(FD_ISSET
 
+			printf("3 ");
+
 			for(i=0; i<g_iClientMax; i++)
 			{
 				if(FD_ISSET(g_piSocketClient[i], &read_fds))
 				{
+					printf("4 ");
+					
 					memset(&rcv, 0x0, sizeof(struct __message));
 					if((n = recv(g_piSocketClient[i], &rcv, sizeof(struct __message), 0)) <= 0)
 					{
@@ -175,6 +189,8 @@ int main(int argc , char *argv[])
 						removeClient(i);
 						continue;
 					}
+					
+					printf("5 ");
 
 #if ENABLE_HANDLETHREAD
 					struct timeval timeRecv;

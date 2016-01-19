@@ -1,6 +1,6 @@
 #define ENABLE_LINKEDLIST				0		//1:using linked list for managing clients
 #define ENABLE_HANDLETHREAD			1		//1:handling messages with thread
-#define ENABLE_MUTEX						1		//1:using mutex for handling resource
+#define ENABLE_MUTEX						0		//1:using mutex for handling resource
 
 #define MAXLINE									(1024)
 #define MAX_SOCK 								(1024)
