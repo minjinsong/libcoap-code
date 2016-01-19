@@ -6,6 +6,7 @@
 #define MAX_SOCK 								(1024)
 #define RESOURCE_DEFAULT_DELAY	(1000*1000)		//MIN:10ms
 #define RESOURCE_DELAY_TRUST		(1.0)					//
+#define RESOURCE_DELAY_WATCHER	(1000)				//1ms
 
 struct __message {
 	int iFd;
@@ -30,6 +31,9 @@ struct __message {
 struct __client {
 	int iId;
 	int iFd;
+	unsigned int uiReqInterval;
+	struct timeval tSched;
+//	struct timeval tReqInterval;
 	struct __client *next;
 };
 
