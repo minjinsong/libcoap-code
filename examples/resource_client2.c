@@ -92,8 +92,19 @@ int dumpMessage(struct __message msg)
 	timeTrans.tv_usec = msg.client_finished.tv_usec - msg.client_started.tv_usec;
 	if( timeTrans.tv_usec < 0 ) {timeTrans.tv_sec=timeTrans.tv_sec-1; timeTrans.tv_usec=timeTrans.tv_usec + 1000000;	}	
 	*/
-	subTime(&timeTrans, msg.client_finished, msg.client_started);
-	subTime(&tSend1, msg.proxy_started, msg.client_started);
+	if(msg.client_started.tv_sec)
+		subTime(&timeTrans, msg.client_finished, msg.client_started);
+	else if(msg.proxy_recved.tv_sec)
+		subTime(&timeTrans, msg.client_finished, msg.proxy_recved);
+	else if(msg.proxy_started.tv_sec)
+		subTime(&timeTrans, msg.client_finished, msg.proxy_started);	
+	if(msg.client_started.tv_sec)
+		subTime(&tSend1, msg.proxy_started, msg.client_started);
+	else 
+	{
+		tSend1.tv_sec = 0;
+		tSend1.tv_usec = 0;
+	}
 	if( (msg.server_started.tv_sec>0) && (msg.server_finished.tv_sec>0) )
 	{
 		subTime(&tSend2, msg.server_started, msg.proxy_started);

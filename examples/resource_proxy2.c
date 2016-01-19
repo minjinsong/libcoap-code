@@ -435,46 +435,49 @@ int getResourceFromServer(struct __message *msg)
 	return 0;
 }
 
+int setTimeValue(struct timeval *tRet, int iSecond, int iMicroSecond)
+{
+	tRet->tv_sec = iSecond;
+	tRet->tv_usec = iMicroSecond;
+	
+	return 0;
+}
+
 void *pthreadWatchResource(void *arg)
 {
-	//struct __message msg;
 	struct timeval timeSched;
-	//struct timeval timeB;
-	struct timeval timeNow;
+	struct timeval tStart;
 			
 	while(!g_iExit)
 	{
 		if(g_Resource.iClientNumber)
 		{
 			//TODO: get current time
-			gettimeofday(&timeNow, NULL);
+			gettimeofday(&tStart, NULL);
 				
 			//TODO: search all clients registered
 			struct __client *client = g_Resource.next;
 			while(client)
 			{
 				//TODO: find scheduled client
-				if(isBiggerThan(timeNow, client->tSched)) 
+				if(isBiggerThan(tStart, client->tSched)) 
 				{
 					struct __message msg;
+					struct timeval tEnd;
 					
 					//TODO: if cached resource is valid, then use it
-					if(isCachedDataValid(timeNow))
+					if(isCachedDataValid(tStart))
 					{
-						updateCache(timeNow);
+						updateCache(tStart);
 						
 						//TODO: set message with time information		
-						//gettimeofday(&timeEnd, NULL);
-						//msg.proxy_recved.tv_sec = timeRecv.tv_sec;
-						//msg.proxy_recved.tv_usec = timeRecv.tv_usec;
-						//msg.proxy_started.tv_sec = timeStart.tv_sec;
-						//msg.proxy_started.tv_usec = timeStart.tv_usec;
-						//msg.proxy_finished.tv_sec = timeNow.tv_sec;
-						//msg.proxy_finished.tv_usec = timeNow.tv_usec;
-						//msg.rsp_dur = g_Resource.iCachedAge;
 						msg.resource = g_Resource.iCachedResource;
-						//msg.age = RESOURCE_DEFAULT_DELAY/1000 - g_Resource.iCachedAge;
 						msg.age = g_Resource.iCachedAge;
+						
+						//TODO: set server process time with zero
+						setTimeValue(&(msg.server_recved), 0, 0);
+						setTimeValue(&(msg.server_started), 0, 0);
+						setTimeValue(&(msg.server_finished), 0, 0);
 					}
 					else
 					{
@@ -482,8 +485,16 @@ void *pthreadWatchResource(void *arg)
 						getResourceFromServer(&msg);
 					}
 					
-					msg.proxy_finished.tv_sec = timeNow.tv_sec;
-					msg.proxy_finished.tv_usec = timeNow.tv_usec;
+					gettimeofday(&tEnd, NULL);
+					
+					//TODO: set client process time
+					setTimeValue(&(msg.client_recved), 0, 0);
+					setTimeValue(&(msg.client_started), 0, 0);
+					
+					//TODO: set proxy process time
+					setTimeValue(&(msg.proxy_recved), tStart.tv_sec, tStart.tv_usec);
+					setTimeValue(&(msg.proxy_started), tStart.tv_sec, tStart.tv_usec);
+					setTimeValue(&(msg.proxy_finished), tEnd.tv_sec, tEnd.tv_usec);
 					
 					//TODO: send information as response from proxy to client
 					int temp = send(client->iFd, &msg, sizeof(struct __message), 0);
