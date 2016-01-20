@@ -30,7 +30,7 @@ struct __resource g_Resource;
 int initResource()
 {
 	g_Resource.strName[0] = '\0';
-	g_Resource.iCachedAge = 0;
+	g_Resource.uiCachedAge = 0;
 	g_Resource.iCachedResource = 0;
 	g_Resource.iClientNumber = 0;
 	g_Resource.next = NULL;
@@ -38,7 +38,7 @@ int initResource()
 
 int getResource(struct __resource *resource, int *iResource, int iCached)
 {
-	if( (iCached) && (resource->iCachedAge>0) )
+	if( (iCached) && (resource->uiCachedAge>0) )
 	{
 		//TODO: get resource from cache
 		*iResource = resource->iCachedResource;
@@ -156,40 +156,24 @@ int removeObserver(int iFd)
 	return 0;
 }
 
-int addTimeValue(struct timeval *timeR, struct timeval timeA, struct timeval timeB)
+int initCache()
 {
-	if(timeA.tv_usec+timeB.tv_usec > 1000000)
-	{
-		timeR->tv_usec = timeA.tv_usec + timeB.tv_usec - 1000000;
-		timeR->tv_sec = timeA.tv_sec + timeB.tv_sec + 1;
-	}
-	else
-	{
-		timeR->tv_usec = timeA.tv_usec + timeB.tv_usec;
-		timeR->tv_sec = timeA.tv_sec + timeB.tv_sec;
-	}
+	g_Resource.iCachedResource = 0;
+	g_Resource.uiMaxAge = 0;
+	g_Resource.uiCachedAge = 0;
+	setTimeValue(&(g_Resource.tCachedTime), 0, 0);
 	
 	return 0;
 }
 
-int isBiggerThan(struct timeval timeA, struct timeval timeB)
+int setCache(struct __message msg, struct timeval tNow)
 {
-	int ret = 0;
+	g_Resource.iCachedResource = msg.resource;
+	g_Resource.uiMaxAge = msg.uiMaxAge;
+	//g_Resource.uiCachedAge = 0;
+	setTimeValue(&(g_Resource.tCachedTime), tNow.tv_sec, tNow.tv_usec);
 	
-	if(timeA.tv_sec > timeB.tv_sec )
-	{
-		ret = 1;
-	}
-	else if(timeA.tv_sec == timeB.tv_sec)
-	{
-		if(timeA.tv_usec > timeB.tv_usec)
-			ret = 1;
-		else
-			ret = 0;
-	}
-	return ret;
 }
-
 
 int isCachedDataValid(struct timeval curTime)
 {
@@ -197,10 +181,30 @@ int isCachedDataValid(struct timeval curTime)
 	struct timeval timeRet;
 	int ret = 0;
 	
-	if( (g_Resource.iCachedAge>0) && (g_Resource.tCachedTime.tv_sec!=0) )
+	if( (g_Resource.uiCachedAge<g_Resource.uiMaxAge) && (g_Resource.tCachedTime.tv_sec>0) )
+	//if(g_Resource.tCachedTime.tv_sec > 0)
 	{
+#if 1
+		struct timeval tMaxAge;
+		struct timeval tTemp;
+		setTimeValue(&tMaxAge, g_Resource.uiMaxAge/1000, (g_Resource.uiMaxAge%1000)*1000);
+		addTimeValue(&tTemp, g_Resource.tCachedTime, tMaxAge);
+		//printf("%s:tMaxAge=%6ld.%06ld\n", __func__, tMaxAge.tv_sec, tMaxAge.tv_usec);
+		//printf("%s:tTemp=%6ld.%06ld\n", __func__, tTemp.tv_sec, tTemp.tv_usec);	
+		if(isBiggerThan(tTemp, curTime))
+		{
+			//TODO: cached!
+			ret = 1;
+		}
+		else
+		{
+			//TODO: need to sync with server
+			ret = 0;
+		}
+		//printf("%s:ret=%d\n", __func__, ret);
+#else		
 		timeB.tv_sec = 0;
-		timeB.tv_usec = g_Resource.iCachedAge*1000;
+		timeB.tv_usec = g_Resource.uiCachedAge*1000;
 		
 		addTimeValue(&timeRet, g_Resource.tCachedTime, timeB);
 
@@ -212,9 +216,10 @@ int isCachedDataValid(struct timeval curTime)
 		{
 			g_Resource.tCachedTime.tv_sec = 0;
 			g_Resource.tCachedTime.tv_usec = 0;
-			g_Resource.iCachedAge = 0;
+			g_Resource.uiCachedAge = 0;
 			ret = 0;
 		}
+#endif		
 	}
 	else
 	{
@@ -227,29 +232,43 @@ int isCachedDataValid(struct timeval curTime)
 int updateCache(struct timeval curTime)
 {
 	struct timeval temp;
+	int ret = 0;
+
+#if 1
+	if(isBiggerThan(curTime, g_Resource.tCachedTime))
+	{
+		subTimeValue(&temp, curTime, g_Resource.tCachedTime);
+		g_Resource.uiCachedAge = temp.tv_sec*1000 + temp.tv_usec/1000;
+	}
+	else
+	{
+		g_Resource.uiCachedAge = 0;
+	}
 	
-	if(g_Resource.tCachedTime.tv_usec+(g_Resource.iCachedAge*1000) > 1000000)
+	printf("%s:g_Resource.uiCachedAge=%d\n", __func__, g_Resource.uiCachedAge);
+#else
+	if(g_Resource.tCachedTime.tv_usec+(g_Resource.uiCachedAge*1000) > 1000000)
 	{
 		temp.tv_sec = g_Resource.tCachedTime.tv_sec + 1;
-		temp.tv_usec = g_Resource.tCachedTime.tv_usec+(g_Resource.iCachedAge*1000) - 1000000;
+		temp.tv_usec = g_Resource.tCachedTime.tv_usec+(g_Resource.uiCachedAge*1000) - 1000000;
 	}
 	else
 	{
 		temp.tv_sec = g_Resource.tCachedTime.tv_sec;
-		temp.tv_usec = g_Resource.tCachedTime.tv_usec+(g_Resource.iCachedAge*1000);
+		temp.tv_usec = g_Resource.tCachedTime.tv_usec+(g_Resource.uiCachedAge*1000);
 	}
 	if(temp.tv_usec < curTime.tv_usec)
 	{
-		g_Resource.iCachedAge = (temp.tv_sec-curTime.tv_sec-1)*1000 + (temp.tv_usec+1000000-curTime.tv_usec)/1000;
+		g_Resource.uiCachedAge = (temp.tv_sec-curTime.tv_sec-1)*1000 + (temp.tv_usec+1000000-curTime.tv_usec)/1000;
 	}
 	else
 	{
-		g_Resource.iCachedAge = (temp.tv_sec - curTime.tv_sec)*1000 + (temp.tv_usec - curTime.tv_usec)/1000;
+		g_Resource.uiCachedAge = (temp.tv_sec - curTime.tv_sec)*1000 + (temp.tv_usec - curTime.tv_usec)/1000;
 	}
 	g_Resource.tCachedTime.tv_sec = curTime.tv_sec;
 	g_Resource.tCachedTime.tv_usec = curTime.tv_usec;
-
-	return 0;
+#endif
+	return ret;
 }
 
 int handleMessage(struct __message *arg)
@@ -289,19 +308,19 @@ int handleMessage(struct __message *arg)
 			msg.proxy_finished.tv_sec = timeEnd.tv_sec;
 			msg.proxy_finished.tv_usec = timeEnd.tv_usec;
 			
-			msg.rsp_dur = g_Resource.iCachedAge;
+			msg.uiMaxAge = g_Resource.uiMaxAge - g_Resource.uiCachedAge;
 			msg.resource = g_Resource.iCachedResource;
-			msg.age = RESOURCE_DEFAULT_DELAY/1000 - g_Resource.iCachedAge;
+			//msg.age = RESOURCE_DEFAULT_DELAY/1000 - g_Resource.uiCachedAge;
 			
 			//TODO: set cached with information
 			//g_Resource.iCachedResource = resp.resource;
-			//g_Resource.iCachedAge = resp.rsp_dur;
+			//g_Resource.uiCachedAge = resp.rsp_dur;
 			memcpy(&g_Resource.tCachedTime, &timeEnd, sizeof(struct timeval));
 			
 			printf("CACHED! Owner=%d, R=%d, Age=%d\n", 
 				msg.owner,
 				g_Resource.iCachedResource, 
-				g_Resource.iCachedAge
+				g_Resource.uiCachedAge
 				);
 
 			//TODO: send information as response from proxy to client
@@ -341,18 +360,20 @@ int handleMessage(struct __message *arg)
 			msg.proxy_finished.tv_sec = timeEnd.tv_sec;
 			msg.proxy_finished.tv_usec = timeEnd.tv_usec;
 			
-			msg.rsp_dur = resp.rsp_dur;
+			//msg.rsp_dur = resp.rsp_dur;
+			msg.uiMaxAge = resp.uiMaxAge;
 			msg.resource = resp.resource;
-			msg.age = 0;
+			//msg.age = 0;
+			
 			
 			//TODO: set cached with information
 			g_Resource.iCachedResource = resp.resource;
-			g_Resource.iCachedAge = resp.rsp_dur;
+			g_Resource.uiMaxAge = resp.uiMaxAge;
 			memcpy(&g_Resource.tCachedTime, &timeEnd, sizeof(struct timeval));
 			printf("NOT cached! Owner=%d, R=%d, Age=%d, tCachedTime=%ld\n",
 				msg.owner,
 				g_Resource.iCachedResource, 
-				g_Resource.iCachedAge, 
+				g_Resource.uiCachedAge, 
 				g_Resource.tCachedTime.tv_sec%1000);
 				
 			//pthread_mutex_unlock(&m_lock);
@@ -403,43 +424,16 @@ int getResourceFromServer(struct __message *msg)
 	memset(&resp, 0x0, sizeof(struct __message));
 	if((size = recv(g_iSocketServer, &resp, sizeof(struct __message), 0)) > 0)
 	{
-		msg->server_recved.tv_sec = resp.server_recved.tv_sec;
-		msg->server_recved.tv_sec = resp.server_recved.tv_sec;
-		msg->server_started.tv_sec = resp.server_started.tv_sec;
-		msg->server_started.tv_usec = resp.server_started.tv_usec;
-		msg->server_finished.tv_sec = resp.server_finished.tv_sec;
-		msg->server_finished.tv_usec = resp.server_finished.tv_usec;
+		setTimeValue(&(msg->server_recved), resp.server_recved.tv_sec, resp.server_recved.tv_usec);
+		setTimeValue(&(msg->server_started), resp.server_started.tv_sec, resp.server_started.tv_usec);
+		setTimeValue(&(msg->server_finished), resp.server_finished.tv_sec, resp.server_finished.tv_usec);
 	} //if((size
-
-	//TODO: set message with time information			
-	gettimeofday(&timeEnd, NULL);
-	//printf("[%d]%d-%d\n", msg->owner, msg->cnt, msg->req_dur);
-	msg->proxy_recved.tv_sec = 0;//timeRecv.tv_sec;
-	msg->proxy_recved.tv_usec = 0;//timeRecv.tv_usec;
-	msg->proxy_started.tv_sec = timeStart.tv_sec;
-	msg->proxy_started.tv_usec = timeStart.tv_usec;
-	msg->proxy_finished.tv_sec = timeEnd.tv_sec;
-	msg->proxy_finished.tv_usec = timeEnd.tv_usec;
-			
-	msg->rsp_dur = resp.rsp_dur;
+		
 	msg->resource = resp.resource;
-	msg->age = 0;
-	
-	//TODO: set cached with information
-	g_Resource.iCachedResource = resp.resource;
-	g_Resource.iCachedAge = resp.rsp_dur;
-	memcpy(&g_Resource.tCachedTime, &timeEnd, sizeof(struct timeval));
-	
+	msg->uiMaxAge = resp.uiMaxAge;
+
 	//pthread_mutex_unlock(&m_lock);
 			
-	return 0;
-}
-
-int setTimeValue(struct timeval *tRet, int iSecond, int iMicroSecond)
-{
-	tRet->tv_sec = iSecond;
-	tRet->tv_usec = iMicroSecond;
-	
 	return 0;
 }
 
@@ -468,24 +462,36 @@ void *pthreadWatchResource(void *arg)
 					//TODO: if cached resource is valid, then use it
 					if(isCachedDataValid(tStart))
 					{
+						//TODO: update cache timing information
 						updateCache(tStart);
-						
-						//TODO: set message with time information		
-						msg.resource = g_Resource.iCachedResource;
-						msg.age = g_Resource.iCachedAge;
 						
 						//TODO: set server process time with zero
 						setTimeValue(&(msg.server_recved), 0, 0);
 						setTimeValue(&(msg.server_started), 0, 0);
 						setTimeValue(&(msg.server_finished), 0, 0);
+						
+						//TODO: set message with time information		
+						msg.resource = g_Resource.iCachedResource;
+						msg.uiMaxAge = g_Resource.uiMaxAge - g_Resource.uiCachedAge;
+						//printf("%s:uiMaxAge=%d(%d-%d)\n", __func__, msg.uiMaxAge, g_Resource.uiMaxAge, g_Resource.uiCachedAge);	
+						
+						//TODO: get current time
+						gettimeofday(&tEnd, NULL);
 					}
 					else
 					{
+						//TODO: init cache
+						initCache();
+						
 						//TODO: get a fresh resource from a server
 						getResourceFromServer(&msg);
-					}
+						
+						//TODO: get current time
+						gettimeofday(&tEnd, NULL);
 					
-					gettimeofday(&tEnd, NULL);
+						//TODO: set cached with information
+						setCache(msg, tEnd);
+					}
 					
 					//TODO: set client process time
 					setTimeValue(&(msg.client_recved), 0, 0);
@@ -507,9 +513,10 @@ void *pthreadWatchResource(void *arg)
 				}
 				client = client->next;
 			}
-			usleep(10*1000);
+			usleep(5*1000);
 		}	//if(g_Resource.iClientNumber)
-		//usleep(1000*1000);
+		
+		usleep(50*1000);
 	}
 		
 	return NULL;
@@ -573,7 +580,7 @@ int main(int argc , char *argv[])
 			
 	if((s = socket(PF_INET, SOCK_STREAM, 0)) < 0)
 	{
-		printf("server : socket failed!\n");
+		printf("proxy : socket failed!\n");
 		exit(0);
 	}	//if((s = socket
 		
@@ -588,7 +595,7 @@ int main(int argc , char *argv[])
 		
 	if(bind(s, (struct sockaddr  *)&proxy_addr, sizeof(struct sockaddr_in)) < 0)
 	{
-		printf("server : bind failed!\n");
+		printf("proxy : bind failed!\n");
 		exit(0);
 	}
 	
@@ -624,7 +631,7 @@ dumpObserver();
 			g_piFdMax = getFdMax(s) + 1;
 			if(select(g_piFdMax, &read_fds, (fd_set *)0, (fd_set *)0, (struct timeval *)0) < 0)
 			{
-				printf("server : select failed\n");
+				printf("proxy : select failed\n");
 				exit(0);
 			}//if(select
 				
@@ -634,7 +641,7 @@ dumpObserver();
 				client_fd = accept(s, (struct sockaddr *)&client_addr, &client);
 				if(client_fd == -1)
 				{
-					printf("server : accept failed!\n");
+					printf("proxy : accept failed!\n");
 					exit(0);
 				}
 
@@ -643,7 +650,7 @@ dumpObserver();
 
 				//printf("client_fd=%d, g_iClientMax=%d\n", client_fd, g_iClientMax);		
 				//send(client_fd, start, strlen(start), 0);
-				printf("server : user#%d added!\n", g_iClientMax);
+				printf("proxy : user#%d added!\n", g_iClientMax);
 			}//if(FD_ISSET
 
 			for(i=0; i<g_iClientMax; i++)
@@ -697,7 +704,7 @@ void removeClient(int index)
 		g_piSocketClient[index] = g_piSocketClient[g_iClientMax-1];
 	}
 	g_iClientMax--;
-	printf("server : user exit, g_piSocketClient[%d]=%d\n", index, g_piSocketClient[index]);
+	printf("proxy : user exit, g_piSocketClient[%d]=%d\n", index, g_piSocketClient[index]);
 }	//void removeClient
 
 

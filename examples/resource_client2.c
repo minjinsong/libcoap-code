@@ -32,7 +32,7 @@ int initMessage(struct __message *msg)
 	msg->client_started.tv_usec = timeStart.tv_usec;
 	return 0;
 }
-
+/*
 int subTime(struct timeval *tRet, struct timeval val1, struct timeval val2)
 {
 	struct timeval tTemp;
@@ -41,6 +41,7 @@ int subTime(struct timeval *tRet, struct timeval val1, struct timeval val2)
 	tRet->tv_usec = val1.tv_usec - val2.tv_usec;
 	if( tRet->tv_usec < 0 ) {tRet->tv_sec=tRet->tv_sec-1; tRet->tv_usec=tRet->tv_usec + 1000000;	}	
 }
+
 
 int addTimeValue(struct timeval *timeR, struct timeval timeA, struct timeval timeB)
 {
@@ -76,7 +77,7 @@ int isBiggerThan(struct timeval timeA, struct timeval timeB)
 	return ret;
 }
 
-
+*/
 int dumpMessage(struct __message msg)
 {
 	struct timeval timeTrans;
@@ -93,13 +94,13 @@ int dumpMessage(struct __message msg)
 	if( timeTrans.tv_usec < 0 ) {timeTrans.tv_sec=timeTrans.tv_sec-1; timeTrans.tv_usec=timeTrans.tv_usec + 1000000;	}	
 	*/
 	if(msg.client_started.tv_sec)
-		subTime(&timeTrans, msg.client_finished, msg.client_started);
+		subTimeValue(&timeTrans, msg.client_finished, msg.client_started);
 	else if(msg.proxy_recved.tv_sec)
-		subTime(&timeTrans, msg.client_finished, msg.proxy_recved);
+		subTimeValue(&timeTrans, msg.client_finished, msg.proxy_recved);
 	else if(msg.proxy_started.tv_sec)
-		subTime(&timeTrans, msg.client_finished, msg.proxy_started);	
+		subTimeValue(&timeTrans, msg.client_finished, msg.proxy_started);	
 	if(msg.client_started.tv_sec)
-		subTime(&tSend1, msg.proxy_started, msg.client_started);
+		subTimeValue(&tSend1, msg.proxy_started, msg.client_started);
 	else 
 	{
 		tSend1.tv_sec = 0;
@@ -107,9 +108,9 @@ int dumpMessage(struct __message msg)
 	}
 	if( (msg.server_started.tv_sec>0) && (msg.server_finished.tv_sec>0) )
 	{
-		subTime(&tSend2, msg.server_started, msg.proxy_started);
-		subTime(&tServer, msg.server_finished, msg.server_started);
-		subTime(&tRecv2, msg.proxy_finished, msg.server_finished);
+		subTimeValue(&tSend2, msg.server_started, msg.proxy_started);
+		subTimeValue(&tServer, msg.server_finished, msg.server_started);
+		subTimeValue(&tRecv2, msg.proxy_finished, msg.server_finished);
 	}
 	else
 	{
@@ -121,33 +122,13 @@ int dumpMessage(struct __message msg)
 		tRecv2.tv_usec = 0;
 	}
 	
-	subTime(&tRecv1, msg.client_finished, msg.proxy_finished);
-	/*
-	printf("[%d|%d]resp=%ld.%06ldus,age=%d(%ld.%03ld|%ld.%03ld)(%ld.%03ld|%ld.%03ld)(%ld.%03ld|%ld.%03ld)\n", \
-		msg.owner,	\
-		msg.cnt,	\
-		timeTrans.tv_sec%1000,	\
-		timeTrans.tv_usec,	\
-		msg.age,	\
-		msg.server_started.tv_sec%1000,	\
-		msg.server_started.tv_usec,	\
-		msg.server_finished.tv_sec%1000,	\
-		msg.server_finished.tv_usec,	\
-		msg.proxy_started.tv_sec%1000,	\
-		msg.proxy_started.tv_usec,	\
-		msg.proxy_finished.tv_sec%1000,	\
-		msg.proxy_finished.tv_usec,	\
-		msg.client_started.tv_sec%1000,	\
-		msg.client_started.tv_usec,	\
-		msg.client_finished.tv_sec%1000,	\
-		msg.client_finished.tv_usec
-		);
-	*/
-	printf("[%d-%d]R=%d, Age=%d, Rsp=%ld.%06ldms(%ld.%06ld)(%ld.%06ld)(%ld.%06ld)(%ld.%06ld)(%ld.%06ld)\n", 
+	subTimeValue(&tRecv1, msg.client_finished, msg.proxy_finished);
+	
+	printf("[%d-%d]R=%d, MaxAge=%d, Rsp=%ld.%06ldms(%ld.%06ld)(%ld.%06ld)(%ld.%06ld)(%ld.%06ld)(%ld.%06ld)\n", 
 		msg.owner,	\
 		msg.cnt,	\
 		msg.resource,	\
-		msg.age,	\
+		msg.uiMaxAge,	\
 		timeTrans.tv_sec%1000,	\
 		timeTrans.tv_usec,	\
 		tSend1.tv_sec%1000,	\

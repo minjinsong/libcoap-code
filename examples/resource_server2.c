@@ -65,18 +65,17 @@ int handleMessage(struct __message *arg)
 	msg.server_finished.tv_sec = timeEnd.tv_sec;
 	msg.server_finished.tv_usec = timeEnd.tv_usec;
 
-	msg.resource =  timeEnd.tv_sec%10000;
-	//msg.rsp_dur = (RESOURCE_DEFAULT_DELAY*RESOURCE_DELAY_TRUST)/1000;	
-	msg.rsp_dur = (1000000-timeEnd.tv_usec)/1000;	
+	msg.resource =  timeEnd.tv_sec%1000000;
+	msg.uiMaxAge = (1000000-timeEnd.tv_usec)/1000;	
 	
 //TODO: tx delay
 //usleep(7*1000);	
 
-	printf("[%d-%d]R=%d.%06ld, Dur=%d\n", msg.owner, msg.cnt, msg.resource, timeEnd.tv_usec, msg.rsp_dur);
+	printf("[%d-%d]Resource=%d, uiMaxAge=%d ", msg.owner, msg.cnt, msg.resource, msg.uiMaxAge);
 	
 	int temp = send(msg.iFd, &msg, sizeof(struct __message), 0);
 	
-	//printf("9 ");
+	printf("9\n");
 
 	return 0;
 }
