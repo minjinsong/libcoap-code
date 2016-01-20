@@ -129,6 +129,9 @@ int removeObserver(int iFd)
 	struct __client *pFront; 
 	struct __client *pRear; 
 	struct __client *pTemp;
+	
+	if(g_Resource.next == NULL)
+		return 0;
 
 	pClient = g_Resource.next;
 
@@ -139,7 +142,7 @@ int removeObserver(int iFd)
 		g_Resource.iClientNumber--;
 		return 0;
 	}
-	
+
 	while(pClient)
 	{
 		if(iFd == pClient->iFd)
@@ -152,7 +155,7 @@ int removeObserver(int iFd)
 		pFront = pClient;
 		pClient = pClient->next;
 	}
-	
+
 	return 0;
 }
 
@@ -182,9 +185,7 @@ int isCachedDataValid(struct timeval curTime)
 	int ret = 0;
 	
 	if( (g_Resource.uiCachedAge<g_Resource.uiMaxAge) && (g_Resource.tCachedTime.tv_sec>0) )
-	//if(g_Resource.tCachedTime.tv_sec > 0)
 	{
-#if 1
 		struct timeval tMaxAge;
 		struct timeval tTemp;
 		setTimeValue(&tMaxAge, g_Resource.uiMaxAge/1000, (g_Resource.uiMaxAge%1000)*1000);
@@ -192,34 +193,9 @@ int isCachedDataValid(struct timeval curTime)
 		//printf("%s:tMaxAge=%6ld.%06ld\n", __func__, tMaxAge.tv_sec, tMaxAge.tv_usec);
 		//printf("%s:tTemp=%6ld.%06ld\n", __func__, tTemp.tv_sec, tTemp.tv_usec);	
 		if(isBiggerThan(tTemp, curTime))
-		{
-			//TODO: cached!
 			ret = 1;
-		}
 		else
-		{
-			//TODO: need to sync with server
 			ret = 0;
-		}
-		//printf("%s:ret=%d\n", __func__, ret);
-#else		
-		timeB.tv_sec = 0;
-		timeB.tv_usec = g_Resource.uiCachedAge*1000;
-		
-		addTimeValue(&timeRet, g_Resource.tCachedTime, timeB);
-
-		if(isBiggerThan(timeRet, curTime))
-		{
-			ret = 1;
-		}
-		else
-		{
-			g_Resource.tCachedTime.tv_sec = 0;
-			g_Resource.tCachedTime.tv_usec = 0;
-			g_Resource.uiCachedAge = 0;
-			ret = 0;
-		}
-#endif		
 	}
 	else
 	{
@@ -234,7 +210,6 @@ int updateCache(struct timeval curTime)
 	struct timeval temp;
 	int ret = 0;
 
-#if 1
 	if(isBiggerThan(curTime, g_Resource.tCachedTime))
 	{
 		subTimeValue(&temp, curTime, g_Resource.tCachedTime);
@@ -245,42 +220,21 @@ int updateCache(struct timeval curTime)
 		g_Resource.uiCachedAge = 0;
 	}
 	
-	printf("%s:g_Resource.uiCachedAge=%d\n", __func__, g_Resource.uiCachedAge);
-#else
-	if(g_Resource.tCachedTime.tv_usec+(g_Resource.uiCachedAge*1000) > 1000000)
-	{
-		temp.tv_sec = g_Resource.tCachedTime.tv_sec + 1;
-		temp.tv_usec = g_Resource.tCachedTime.tv_usec+(g_Resource.uiCachedAge*1000) - 1000000;
-	}
-	else
-	{
-		temp.tv_sec = g_Resource.tCachedTime.tv_sec;
-		temp.tv_usec = g_Resource.tCachedTime.tv_usec+(g_Resource.uiCachedAge*1000);
-	}
-	if(temp.tv_usec < curTime.tv_usec)
-	{
-		g_Resource.uiCachedAge = (temp.tv_sec-curTime.tv_sec-1)*1000 + (temp.tv_usec+1000000-curTime.tv_usec)/1000;
-	}
-	else
-	{
-		g_Resource.uiCachedAge = (temp.tv_sec - curTime.tv_sec)*1000 + (temp.tv_usec - curTime.tv_usec)/1000;
-	}
-	g_Resource.tCachedTime.tv_sec = curTime.tv_sec;
-	g_Resource.tCachedTime.tv_usec = curTime.tv_usec;
-#endif
+	//printf("%s:g_Resource.uiCachedAge=%d\n", __func__, g_Resource.uiCachedAge);
+
 	return ret;
 }
 
 int handleMessage(struct __message *arg)
 {
-	struct timeval timeStart, timeEnd;
+	struct timeval tStart, timeEnd;
 	struct __message msg = {0x0, };
 	struct __message resp = {0x0, };
 
 	memcpy(&msg, arg, sizeof(struct __message));
 
 	//TODO: handle packet
-	gettimeofday(&timeStart, NULL);
+	gettimeofday(&tStart, NULL);
 
 	//TODO: wait until other request responded
 	//pthread_mutex_lock(&m_lock);
@@ -293,94 +247,74 @@ int handleMessage(struct __message *arg)
 	}
 	else if (msg.cmd == RESOURCE_CMD_GET)
 	{
+		struct timeval tEnd;
+		
 		//TODO: get cached resource
-		if(0)
-		//if(isCachedDataValid(timeStart))
+		if(isCachedDataValid(tStart))
 		{
-			updateCache(timeStart);
+			//TODO: update cache timing information
+			updateCache(tStart);
+			
+			//TODO: set server process time with zero
+			setTimeValue(&(msg.server_recved), 0, 0);
+			setTimeValue(&(msg.server_started), 0, 0);
+			setTimeValue(&(msg.server_finished), 0, 0);
 			
 			//TODO: set message with time information		
 			gettimeofday(&timeEnd, NULL);
-			//msg.proxy_recved.tv_sec = timeRecv.tv_sec;
-			//msg.proxy_recved.tv_usec = timeRecv.tv_usec;
-			msg.proxy_started.tv_sec = timeStart.tv_sec;
-			msg.proxy_started.tv_usec = timeStart.tv_usec;
-			msg.proxy_finished.tv_sec = timeEnd.tv_sec;
-			msg.proxy_finished.tv_usec = timeEnd.tv_usec;
 			
-			msg.uiMaxAge = g_Resource.uiMaxAge - g_Resource.uiCachedAge;
+			//TODO: set message with time information		
 			msg.resource = g_Resource.iCachedResource;
-			//msg.age = RESOURCE_DEFAULT_DELAY/1000 - g_Resource.uiCachedAge;
-			
-			//TODO: set cached with information
-			//g_Resource.iCachedResource = resp.resource;
-			//g_Resource.uiCachedAge = resp.rsp_dur;
-			memcpy(&g_Resource.tCachedTime, &timeEnd, sizeof(struct timeval));
-			
-			printf("CACHED! Owner=%d, R=%d, Age=%d\n", 
+			msg.uiMaxAge = g_Resource.uiMaxAge - g_Resource.uiCachedAge;
+
+			printf("CACHED! Owner=%d, R=%d, MaxAge=%d, CachedAge=%d\n", 
 				msg.owner,
 				g_Resource.iCachedResource, 
+				g_Resource.uiMaxAge,
 				g_Resource.uiCachedAge
 				);
-
-			//TODO: send information as response from proxy to client
-			int temp = send(msg.iFd, &msg, sizeof(struct __message), 0);
-			
 		}
 		else
 		{
-			//pthread_mutex_lock(&m_lock);
-//printf("%s:1owner=%d\n", __func__, msg.owner);	
-			
-			//TODO: send information request from a proxy to a resource server
-			if(send(g_iSocketServer, &msg, sizeof(struct __message), 0) < 0)
-			{
-				printf("proxy : send failed!\n");
-			}	//if(send(
-//printf("%s:2owner=%d\n", __func__, msg.owner);		
-			//TODO: get information from a resource server to proxy
-			int size;
-			if((size = recv(g_iSocketServer, &resp, sizeof(struct __message), 0)) > 0)
-			{
-				msg.server_recved.tv_sec = resp.server_recved.tv_sec;
-				msg.server_recved.tv_sec = resp.server_recved.tv_sec;
-				msg.server_started.tv_sec = resp.server_started.tv_sec;
-				msg.server_started.tv_usec = resp.server_started.tv_usec;
-				msg.server_finished.tv_sec = resp.server_finished.tv_sec;
-				msg.server_finished.tv_usec = resp.server_finished.tv_usec;
-			} //if((size
-//printf("%s:3owner=%d\n", __func__, msg.owner);
-			//TODO: set message with time information			
-			gettimeofday(&timeEnd, NULL);
-			//printf("[%d]%d-%d\n", msg.owner, msg.cnt, msg.req_dur);
-			//msg.proxy_recved.tv_sec = timeRecv.tv_sec;
-			//msg.proxy_recved.tv_usec = timeRecv.tv_usec;
-			msg.proxy_started.tv_sec = timeStart.tv_sec;
-			msg.proxy_started.tv_usec = timeStart.tv_usec;
-			msg.proxy_finished.tv_sec = timeEnd.tv_sec;
-			msg.proxy_finished.tv_usec = timeEnd.tv_usec;
-			
-			//msg.rsp_dur = resp.rsp_dur;
-			msg.uiMaxAge = resp.uiMaxAge;
-			msg.resource = resp.resource;
-			//msg.age = 0;
-			
-			
+			//TODO: init cache
+			initCache();
+	
+			//TODO: get a fresh resource from a server
+			getResourceFromServer(&msg);
+
+			//TODO: get current time
+			gettimeofday(&tEnd, NULL);
+	
 			//TODO: set cached with information
-			g_Resource.iCachedResource = resp.resource;
-			g_Resource.uiMaxAge = resp.uiMaxAge;
-			memcpy(&g_Resource.tCachedTime, &timeEnd, sizeof(struct timeval));
-			printf("NOT cached! Owner=%d, R=%d, Age=%d, tCachedTime=%ld\n",
+			setCache(msg, tEnd);
+		
+			printf("NOT cached! Owner=%d, R=%d, MaxAge=%d, CachedAge=%d\n",
 				msg.owner,
 				g_Resource.iCachedResource, 
-				g_Resource.uiCachedAge, 
-				g_Resource.tCachedTime.tv_sec%1000);
-				
-			//pthread_mutex_unlock(&m_lock);
-				
-			//TODO: send information as response from proxy to client
-			int temp = send(msg.iFd, &msg, sizeof(struct __message), 0);
+				g_Resource.uiMaxAge,
+				g_Resource.uiCachedAge
+				);
 		}
+		
+		//TODO: set client process time
+		//setTimeValue(&(msg.client_recved), 0, 0);
+		//setTimeValue(&(msg.client_started), 0, 0);
+					
+		//TODO: set proxy process time
+		//setTimeValue(&(msg.proxy_recved), tStart.tv_sec, tStart.tv_usec);
+		setTimeValue(&(msg.proxy_started), tStart.tv_sec, tStart.tv_usec);
+		setTimeValue(&(msg.proxy_finished), tEnd.tv_sec, tEnd.tv_usec);
+
+		//TODO: send information as response from proxy to client
+		int temp = send(msg.iFd, &msg, sizeof(struct __message), 0);
+
+		//TODO: set a new scheduled time of client
+		/*
+		struct timeval tB;
+		tB.tv_sec = client->uiReqInterval/1000;
+		tB.tv_usec = (client->uiReqInterval%1000)*1000;
+			addTimeValue(&(client->tSched), client->tSched, tB);
+		*/
 	}
 	
 	//pthread_mutex_unlock(&m_lock);
@@ -603,18 +537,6 @@ int main(int argc , char *argv[])
 			
 	g_piFdMax = s + 1;
 
-
-//Minjin, 
-/*
-addObserver(1001, 9000);
-addObserver(1002, 9001);
-addObserver(1005, 9003);
-addObserver(1003, 9004);
-dumpObserver();
-removeObserver(9003);
-printf("\n");
-dumpObserver();
-*/
 	pthread_t threadId = 0;
 	pthread_create(&threadId, NULL, pthreadWatchResource, (void *)NULL);
 

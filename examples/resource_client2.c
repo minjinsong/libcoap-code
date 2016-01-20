@@ -18,11 +18,6 @@
 int initMessage(struct __message *msg)
 {
 	struct timeval timeStart;
-	//struct timeval timeTrans;
-	
-	//memset(msg, 0x0, sizeof(struct __message));
-	//srand(time(NULL));
-	//msg->owner = random()%10000;
 	
 	msg->cnt++;
 	msg->req_dur = 100;
@@ -32,52 +27,7 @@ int initMessage(struct __message *msg)
 	msg->client_started.tv_usec = timeStart.tv_usec;
 	return 0;
 }
-/*
-int subTime(struct timeval *tRet, struct timeval val1, struct timeval val2)
-{
-	struct timeval tTemp;
-	
-	tRet->tv_sec = val1.tv_sec - val2.tv_sec;
-	tRet->tv_usec = val1.tv_usec - val2.tv_usec;
-	if( tRet->tv_usec < 0 ) {tRet->tv_sec=tRet->tv_sec-1; tRet->tv_usec=tRet->tv_usec + 1000000;	}	
-}
 
-
-int addTimeValue(struct timeval *timeR, struct timeval timeA, struct timeval timeB)
-{
-	if(timeA.tv_usec+timeB.tv_usec > 1000000)
-	{
-		timeR->tv_usec = timeA.tv_usec + timeB.tv_usec - 1000000;
-		timeR->tv_sec = timeA.tv_sec + timeB.tv_sec + 1;
-	}
-	else
-	{
-		timeR->tv_usec = timeA.tv_usec + timeB.tv_usec;
-		timeR->tv_sec = timeA.tv_sec + timeB.tv_sec;
-	}
-	
-	return 0;
-}
-
-int isBiggerThan(struct timeval timeA, struct timeval timeB)
-{
-	int ret = 0;
-	
-	if(timeA.tv_sec > timeB.tv_sec )
-	{
-		ret = 1;
-	}
-	else if(timeA.tv_sec == timeB.tv_sec)
-	{
-		if(timeA.tv_usec > timeB.tv_usec)
-			ret = 1;
-		else
-			ret = 0;
-	}
-	return ret;
-}
-
-*/
 int dumpMessage(struct __message msg)
 {
 	struct timeval timeTrans;
@@ -88,11 +38,6 @@ int dumpMessage(struct __message msg)
 	struct timeval tRecv1;
 
 	//TODO: dump response
-	/*
-	timeTrans.tv_sec = msg.client_finished.tv_sec - msg.client_started.tv_sec;
-	timeTrans.tv_usec = msg.client_finished.tv_usec - msg.client_started.tv_usec;
-	if( timeTrans.tv_usec < 0 ) {timeTrans.tv_sec=timeTrans.tv_sec-1; timeTrans.tv_usec=timeTrans.tv_usec + 1000000;	}	
-	*/
 	if(msg.client_started.tv_sec)
 		subTimeValue(&timeTrans, msg.client_finished, msg.client_started);
 	else if(msg.proxy_recved.tv_sec)
