@@ -33,8 +33,8 @@ int handleMessage(struct __message *arg)
 
 	printf("6 ");
 	
-//TODO: rx delay
-//usleep(8*1000);
+	//TODO: rx delay
+	usleep(DELAY_SERVER_RX*1000);
 
 	memcpy(&msg, arg, sizeof(struct __message));
 
@@ -46,12 +46,9 @@ int handleMessage(struct __message *arg)
     		
    printf("7 ");
    
-	//TODO: handle packet
-	//usleep(RESOURCE_DEFAULT_DELAY);
-	
 	//TODO: process delay
-	usleep(1*1000);
-	    		
+	usleep(DELAY_SERVER_PROCESS*1000);
+	
 #if ENABLE_MUTEX
 	pthread_mutex_unlock(&m_lock);
 #endif	//#if ENABLE_MUTEX
@@ -60,22 +57,37 @@ int handleMessage(struct __message *arg)
 	
 	gettimeofday(&timeEnd, NULL);
 
+#if 1
+	setTimeValue(&(msg.server_started), timeStart.tv_sec, timeStart.tv_usec);
+	setTimeValue(&(msg.server_finished), timeEnd.tv_sec, timeEnd.tv_usec);
+#else
 	msg.server_started.tv_sec = timeStart.tv_sec;
 	msg.server_started.tv_usec = timeStart.tv_usec;
 	msg.server_finished.tv_sec = timeEnd.tv_sec;
 	msg.server_finished.tv_usec = timeEnd.tv_usec;
-
-	msg.resource =  timeEnd.tv_sec%1000000;
-	msg.uiMaxAge = (1000000-timeEnd.tv_usec)/1000;	
+#endif
 	
-//TODO: tx delay
-//usleep(7*1000);	
+#if 1	//Time Resource
+	msg.resource =  timeEnd.tv_sec%1000000;
+	msg.uiMaxAge = (1000000-timeEnd.tv_usec)/1000;
+#else
+	msg.resource =  timeEnd.tv_usec%1000;
+	msg.uiMaxAge = RESOURCE_DEFAULT_DELAY;
+	/*
+	struct timeval tTemp;
+	subTimeValue(&tTemp, timeEnd, timeStart);
+	msg.uiMaxAge = tTemp.tv_sec*1000 + tTemp.tv_usec/1000;
+	*/
+#endif	
+	
+	//TODO: tx delay
+	usleep(DELAY_SERVER_TX*1000);	
 
-	printf("[%d-%d]Resource=%d, uiMaxAge=%d ", msg.owner, msg.cnt, msg.resource, msg.uiMaxAge);
+	printf("[%d-%d]Resource=%d, uiMaxAge=%d, msg.iFd=%d ", msg.owner, msg.cnt, msg.resource, msg.uiMaxAge, msg.iFd);
 	
 	int temp = send(msg.iFd, &msg, sizeof(struct __message), 0);
 	
-	printf("9\n");
+	printf("9:temp=%d\n", temp);
 
 	return 0;
 }
@@ -135,12 +147,12 @@ int main(int argc , char *argv[])
 		{
 			FD_ZERO(&read_fds);
 			FD_SET(s, &read_fds);
-			
+printf("11 ");			
 			for(i=0; i<g_iClientMax; i++)
 			{
 				FD_SET(g_piSocketClient[i], &read_fds);
 			}	//for(i=0;
-
+printf("12 ");
 			g_piFdMax = getFdMax(s) + 1;
 			if(select(g_piFdMax, &read_fds, (fd_set *)0, (fd_set *)0, (struct timeval *)0) < 0)
 			{
@@ -191,21 +203,23 @@ int main(int argc , char *argv[])
 					
 					printf("5 ");
 
-#if ENABLE_HANDLETHREAD
 					struct timeval timeRecv;
 					gettimeofday(&timeRecv, NULL);
 					rcv.server_recved.tv_sec = timeRecv.tv_sec;
 					rcv.server_recved.tv_usec = timeRecv.tv_usec;
-					
+//#if ENABLE_HANDLETHREAD
+#if 0
 					pthread_t ptId = 0;
 					rcv.iFd = g_piSocketClient[i];
 					pthread_create(&ptId, NULL, pthread_func, (void *)&rcv);
 					//usleep(1);
 #else			
+					rcv.iFd = g_piSocketClient[i];
 					handleMessage(&rcv);
-					memcpy(&trans, &rcv, sizeof(struct __message));
-
-					int temp = send(g_piSocketClient[i], &trans, sizeof(struct __message), 0);
+					//memcpy(&trans, &rcv, sizeof(struct __message));
+					//int temp = send(g_piSocketClient[i], &trans, sizeof(struct __message), 0);
+					
+					printf("10 ");
 #endif
 				} //if(FD_ISSET(	
 			} //for(i=0

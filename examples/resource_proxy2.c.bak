@@ -450,7 +450,7 @@ void *pthreadWatchResource(void *arg)
 #endif	//test			
 			
 			//TODO: search all clients registered
-			struct __client *client = g_Resource.next;
+			//struct __client *client = g_Resource.next;
 			while(client)
 			{
 				//TODO: find scheduled client

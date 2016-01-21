@@ -1,12 +1,18 @@
 #define ENABLE_LINKEDLIST				0		//1:using linked list for managing clients
 #define ENABLE_HANDLETHREAD			1		//1:handling messages with thread
-#define ENABLE_MUTEX						0		//1:using mutex for handling resource
+#define ENABLE_MUTEX						1		//1:using mutex for handling resource
 
 #define MAXLINE									(1024)
 #define MAX_SOCK 								(1024)
-#define RESOURCE_DEFAULT_DELAY	(1000*1000)		//MIN:10ms
-#define RESOURCE_DELAY_TRUST		(1.0)					//
+#define RESOURCE_DEFAULT_DELAY	(5)				//ms
+#define RESOURCE_DELAY_TRUST		(1.1)					//
 #define RESOURCE_DELAY_WATCHER	(1000)				//1ms
+#define DELAY_PROXY_RX					(5)
+#define DELAY_PROXY_TX					(3)
+//#define DELAY_PROXY_PROCESS		()
+#define DELAY_SERVER_RX					(12)		//ms
+#define DELAY_SERVER_TX					(8)			//ms
+#define DELAY_SERVER_PROCESS		(RESOURCE_DEFAULT_DELAY)
 
 struct __message {
 	int iFd;
@@ -123,7 +129,7 @@ int isBiggerThan(struct timeval timeA, struct timeval timeB)
 	}
 	else if(timeA.tv_sec == timeB.tv_sec)
 	{
-		if(timeA.tv_usec > timeB.tv_usec)
+		if(timeA.tv_usec >= timeB.tv_usec)
 			ret = 1;
 		else
 			ret = 0;
