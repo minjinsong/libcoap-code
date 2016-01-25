@@ -14,6 +14,19 @@
 #define DELAY_SERVER_TX					(8)			//ms
 #define DELAY_SERVER_PROCESS		(RESOURCE_DEFAULT_DELAY)
 
+enum {
+	RESOURCE_CMD_GET			= 0x0,
+	RESOURCE_CMD_REGISTER,
+	RESOURCE_CMD_SET,
+	RESOURCE_CMD_MAX
+};
+
+enum {
+	CACHE_STATE_INVALID		= 0x0,
+	CACHE_STATE_UPDATING,
+	CACHE_STATE_VALID,
+};
+
 struct __message {
 	int iFd;
 	unsigned int owner;
@@ -42,26 +55,36 @@ struct __client {
 	struct timeval tSched;
 //	struct timeval tReqInterval;
 	struct __client *next;
+	struct __client *nextClient;
 };
 
+	struct __cache {
+		int iCachedResource;
+		unsigned int uiState;
+		unsigned int uiMaxAge;
+		unsigned int uiCachedAge;
+		struct timeval tCachedTime;
+		struct __cache *nextCache;
+		unsigned int uiClientNumber;
+		struct __client *nextClient;
+	};
+	
+	struct __resource2 {
+		char strName[128];
+		unsigned int uiCacheNumber;
+		struct __cache *nextCache;
+	};
 
-struct __resource {
-	char strName[128];
-	int iCachedResource;
-	unsigned int uiMaxAge;
-	unsigned int uiCachedAge;
-	struct timeval tCachedTime;
-	//struct timeval tValidTime;
-	unsigned int iClientNumber;
-	struct __client *next;
-};
-
-enum {
-	RESOURCE_CMD_GET			= 0x0,
-	RESOURCE_CMD_REGISTER,
-	RESOURCE_CMD_SET,
-	RESOURCE_CMD_MAX
-};
+	struct __resource1 {
+		char strName[128];
+		int iCachedResource;
+		unsigned int uiMaxAge;
+		unsigned int uiCachedAge;
+		struct timeval tCachedTime;
+		//struct timeval tValidTime;
+		unsigned int iClientNumber;
+		struct __client *next;
+	};
 
 /*
 int subTime(struct timeval *tRet, struct timeval val1, struct timeval val2)

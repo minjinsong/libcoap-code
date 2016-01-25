@@ -7,6 +7,12 @@
 	4. ./resource_proxy 2048 127.0.0.1 1024 1[cache on] 0[align off]
 	5. ./resource_proxy 2048 127.0.0.1 1024 1[cache on] 1[align on]
 	6. ./resource_proxy 2048 127.0.0.1 1024 1[cache on] 2[new alogrithm]
+1. 그냥할때
+2. cache 이용할 때
+3. interval 사용할 때
+4. interval + cache 사용할 때
+5. interval align + cache 사용할 때 (최대 공약수)
+6. interval align + cache + prefetch 사용할 때
 */
  
 #include <stdio.h>
@@ -24,27 +30,29 @@
 int getFdMax(int);
 void removeClient(int);
 
-int g_piFdMax;
-int g_iClientMax = 0;
-int g_piSocketClient[MAX_SOCK] = {0, };
+static int g_iExit = 0;
+static int g_piFdMax;
+static int g_iClientMax = 0;
+static int g_piSocketClient[MAX_SOCK] = {0, };
 
 pthread_mutex_t m_lock;
 
 unsigned int g_uiCacheMode = 0;
 unsigned int g_uiCacheAlgorithm = 0;
 int g_iSocketServer = 0;
-struct __resource g_Resource;
+struct __resource1 g_Resource1;
+struct __resource2 g_Resource2;
 
 int initResource()
 {
-	g_Resource.strName[0] = '\0';
-	g_Resource.uiCachedAge = 0;
-	g_Resource.iCachedResource = 0;
-	g_Resource.iClientNumber = 0;
-	g_Resource.next = NULL;
+	g_Resource1.strName[0] = '\0';
+	g_Resource1.uiCachedAge = 0;
+	g_Resource1.iCachedResource = 0;
+	g_Resource1.iClientNumber = 0;
+	g_Resource1.next = NULL;
 }
 
-int getResource(struct __resource *resource, int *iResource, int iCached)
+int getResource(struct __resource1 *resource, int *iResource, int iCached)
 {
 	if( (iCached) && (resource->uiCachedAge>0) )
 	{
@@ -61,7 +69,7 @@ int getResource(struct __resource *resource, int *iResource, int iCached)
 int dumpObserver()
 {
 	struct __client *client; 
-	client = g_Resource.next;
+	client = g_Resource1.next;
 	
 	while(client)
 	{
@@ -94,14 +102,14 @@ int addObserver(int iId, int iFd, unsigned int uiResource, unsigned int uiReqInt
 	//printf("tNow=%3ld.%06ld\n", tNow.tv_sec, tNow.tv_usec);
 	//printf("pNew->tSched=%3ld.%06ld\n", pNew->tSched.tv_sec, pNew->tSched.tv_usec);
 		
-	if(g_Resource.next == NULL)
+	if(g_Resource1.next == NULL)
 	{
-		g_Resource.next = pNew;
-		g_Resource.iClientNumber++;
+		g_Resource1.next = pNew;
+		g_Resource1.iClientNumber++;
 	}
 	else
 	{	
-		pObserver = g_Resource.next;
+		pObserver = g_Resource1.next;
 		
 		fAdd = 1;
 		while(pObserver)
@@ -124,11 +132,155 @@ int addObserver(int iId, int iFd, unsigned int uiResource, unsigned int uiReqInt
 		if(fAdd)
 		{
 			pPrev->next = pNew;
-			g_Resource.iClientNumber++;
+			g_Resource1.iClientNumber++;
 		}
 	}
 		
 	return 0;
+}
+
+struct __cache *createCache(void)
+{
+	struct __cache *pNewCache;
+	
+	pNewCache = (struct __cache *)malloc(sizeof(struct __cache));
+	pNewCache->uiState = CACHE_STATE_INVALID;
+	pNewCache->uiMaxAge = 0;
+	pNewCache->uiCachedAge = 0;
+	setTimeValue(&(pNewCache->tCachedTime), 0, 0);
+	pNewCache->nextCache = NULL;
+	pNewCache->uiClientNumber = 0;
+	pNewCache->nextClient = NULL;
+	
+	return pNewCache;
+}
+
+struct __client *createClient(void)
+{
+	struct __client *pClient;
+	
+	pClient = (struct __client *)malloc(sizeof(struct __client));
+	pClient->iId = 0;
+	pClient->iFd = 0;
+	pClient->uiReqInterval = 0;
+	setTimeValue(&(pClient->tSched), 0, 0);
+	pClient->next = NULL;	
+		
+	return pClient;
+}
+
+int dumpObserver2()
+{
+	struct __cache *pCache = g_Resource2.nextCache;
+
+	while(pCache)
+	{
+		struct __client *pClient = pCache->nextClient;
+		while(pClient)
+		{
+			printf("(id=%d, fd=%d) ", pClient->iId, pClient->iFd);
+			pClient = pClient->nextClient;
+		}
+		pCache = pCache->nextCache;
+	}
+	return 0;
+}
+
+//TODO: add observer into any list
+int addObserver2(int iId, int iFd, unsigned int uiResource, unsigned int uiReqInterval)
+{
+	struct __client *pObserver;
+	//struct __client *pNew;
+	struct __client *pPrev;
+	int fAdd;
+	
+	struct __cache *pCache;
+	struct __client *pClient;
+	
+	//TODO: if there is no cache
+	if( (g_Resource2.uiCacheNumber==0) && (g_Resource2.nextCache==NULL) )
+	{
+		g_Resource2.nextCache = (struct __cache *)createCache();
+		g_Resource2.uiCacheNumber++;
+	}	
+	pCache = g_Resource2.nextCache;
+	//while(pCache)
+	{
+		pClient = (struct __client *)createClient();
+		pClient->uiReqInterval = uiReqInterval;
+		pClient->iId = iId;
+		pClient->iFd = iFd;
+		/*
+		struct timeval tNow, tB;
+		tB.tv_sec = uiReqInterval/1000;
+		tB.tv_usec = (uiReqInterval%1000)*1000;
+		
+		gettimeofday(&tNow, NULL);
+		addTimeValue(&(pClient->tSched), tNow, tB);
+		*/
+	
+		if(pCache->nextClient == NULL)
+		{
+			pCache->nextClient = pClient;
+			pCache->uiClientNumber++;
+		}
+		else
+		{	
+			pObserver = pCache->nextClient;
+			fAdd = 1;
+			while(pObserver)
+			{
+				if(pObserver->iId == iId)
+				{
+					if(pObserver->iFd != iFd)
+						pObserver->iFd = iFd;
+					
+					fAdd = 0;
+					break;
+				}
+				else 
+				{
+					pPrev = pObserver;
+					pObserver = pObserver->nextClient;
+				}
+			}
+			if(fAdd)
+			{
+				pPrev->nextClient = pClient;
+				g_Resource1.iClientNumber++;
+			}
+		}
+	}//while(pCache)
+		
+	return 0;
+}
+
+void *pthreadWatchResource2(void *arg)
+{
+	//struct timeval timeSched;
+	//struct timeval tStart;
+			
+	while(!g_iExit)
+	{
+		if( (g_Resource2.uiCacheNumber>0) && (g_Resource2.nextCache) )
+		{
+			struct __cache *cache = g_Resource2.nextCache;
+			while(cache)
+			{
+				if( (cache->uiClientNumber>0) && (cache->nextClient) )
+				{
+					struct __client *client = cache->nextClient;
+					
+					
+					
+					client = cache->nextClient;
+				}
+				
+				cache = cache->nextCache;
+			}
+		}
+	}
+	
 }
 
 int removeObserver(int iFd)
@@ -138,16 +290,16 @@ int removeObserver(int iFd)
 	struct __client *pRear; 
 	struct __client *pTemp;
 	
-	if(g_Resource.next == NULL)
+	if(g_Resource1.next == NULL)
 		return 0;
 
-	pClient = g_Resource.next;
+	pClient = g_Resource1.next;
 
 	if(iFd == pClient->iFd)
 	{
-		g_Resource.next = pClient->next;
+		g_Resource1.next = pClient->next;
 		free(pClient);
-		g_Resource.iClientNumber--;
+		g_Resource1.iClientNumber--;
 		return 0;
 	}
 
@@ -157,7 +309,7 @@ int removeObserver(int iFd)
 		{
 			pFront->next = pClient->next;
 			free(pClient);
-			g_Resource.iClientNumber--;
+			g_Resource1.iClientNumber--;
 			break;
 		}
 		pFront = pClient;
@@ -169,20 +321,20 @@ int removeObserver(int iFd)
 
 int initCache()
 {
-	g_Resource.iCachedResource = 0;
-	g_Resource.uiMaxAge = 0;
-	g_Resource.uiCachedAge = 0;
-	setTimeValue(&(g_Resource.tCachedTime), 0, 0);
+	g_Resource1.iCachedResource = 0;
+	g_Resource1.uiMaxAge = 0;
+	g_Resource1.uiCachedAge = 0;
+	setTimeValue(&(g_Resource1.tCachedTime), 0, 0);
 	
 	return 0;
 }
 
 int setCache(struct __message msg, struct timeval tNow)
 {
-	g_Resource.iCachedResource = msg.resource;
-	g_Resource.uiMaxAge = msg.uiMaxAge;
-	//g_Resource.uiCachedAge = 0;
-	setTimeValue(&(g_Resource.tCachedTime), tNow.tv_sec, tNow.tv_usec);
+	g_Resource1.iCachedResource = msg.resource;
+	g_Resource1.uiMaxAge = msg.uiMaxAge;
+	//g_Resource1.uiCachedAge = 0;
+	setTimeValue(&(g_Resource1.tCachedTime), tNow.tv_sec, tNow.tv_usec);
 	
 }
 
@@ -192,12 +344,12 @@ int isCachedDataValid(struct timeval curTime)
 	struct timeval timeRet;
 	int ret = 0;
 	
-	if( (g_Resource.uiCachedAge<g_Resource.uiMaxAge) && (g_Resource.tCachedTime.tv_sec>0) )
+	if( (g_Resource1.uiCachedAge<g_Resource1.uiMaxAge) && (g_Resource1.tCachedTime.tv_sec>0) )
 	{
 		struct timeval tMaxAge;
 		struct timeval tTemp;
-		setTimeValue(&tMaxAge, g_Resource.uiMaxAge/1000, (g_Resource.uiMaxAge%1000)*1000);
-		addTimeValue(&tTemp, g_Resource.tCachedTime, tMaxAge);
+		setTimeValue(&tMaxAge, g_Resource1.uiMaxAge/1000, (g_Resource1.uiMaxAge%1000)*1000);
+		addTimeValue(&tTemp, g_Resource1.tCachedTime, tMaxAge);
 		//printf("%s:tMaxAge=%6ld.%06ld\n", __func__, tMaxAge.tv_sec, tMaxAge.tv_usec);
 		//printf("%s:tTemp=%6ld.%06ld\n", __func__, tTemp.tv_sec, tTemp.tv_usec);	
 		if(isBiggerThan(tTemp, curTime))
@@ -218,17 +370,17 @@ int updateCache(struct timeval curTime)
 	struct timeval temp;
 	int ret = 0;
 
-	if(isBiggerThan(curTime, g_Resource.tCachedTime))
+	if(isBiggerThan(curTime, g_Resource1.tCachedTime))
 	{
-		subTimeValue(&temp, curTime, g_Resource.tCachedTime);
-		g_Resource.uiCachedAge = temp.tv_sec*1000 + temp.tv_usec/1000;
+		subTimeValue(&temp, curTime, g_Resource1.tCachedTime);
+		g_Resource1.uiCachedAge = temp.tv_sec*1000 + temp.tv_usec/1000;
 	}
 	else
 	{
-		g_Resource.uiCachedAge = 0;
+		g_Resource1.uiCachedAge = 0;
 	}
 	
-	//printf("%s:g_Resource.uiCachedAge=%d\n", __func__, g_Resource.uiCachedAge);
+	//printf("%s:g_Resource1.uiCachedAge=%d\n", __func__, g_Resource1.uiCachedAge);
 
 	return ret;
 }
@@ -272,14 +424,14 @@ int handleMessage(struct __message *arg)
 			gettimeofday(&timeEnd, NULL);
 			
 			//TODO: set message with time information		
-			msg.resource = g_Resource.iCachedResource;
-			msg.uiMaxAge = g_Resource.uiMaxAge - g_Resource.uiCachedAge;
+			msg.resource = g_Resource1.iCachedResource;
+			msg.uiMaxAge = g_Resource1.uiMaxAge - g_Resource1.uiCachedAge;
 
 			printf("CACHED! Owner=%d, R=%d, MaxAge=%d, CachedAge=%d\n", 
 				msg.owner,
-				g_Resource.iCachedResource, 
-				g_Resource.uiMaxAge,
-				g_Resource.uiCachedAge
+				g_Resource1.iCachedResource, 
+				g_Resource1.uiMaxAge,
+				g_Resource1.uiCachedAge
 				);
 		}
 		else
@@ -298,9 +450,9 @@ int handleMessage(struct __message *arg)
 		
 			printf("NOT cached! Owner=%d, R=%d, MaxAge=%d, CachedAge=%d\n",
 				msg.owner,
-				g_Resource.iCachedResource, 
-				g_Resource.uiMaxAge,
-				g_Resource.uiCachedAge
+				g_Resource1.iCachedResource, 
+				g_Resource1.uiMaxAge,
+				g_Resource1.uiCachedAge
 				);
 		}
 		
@@ -336,8 +488,6 @@ void *pthreadHandleMessage(void *arg)
 	
 	return NULL;
 }
-
-int g_iExit = 0;
 
 void dumpCurrentTime()
 {
@@ -381,13 +531,13 @@ int getResourceFromServer(struct __message *msg)
 /*
 int getFirstScheduledTime(struct timeval *tRet)
 {
-	struct __client *client = g_Resource.next;
+	struct __client *client = g_Resource1.next;
 	struct timeval tCacheExpired;
 	struct timeval tMaxAge;
 	
-	setTimeValue(&tMaxAge, g_Resource.uiMaxAge/1000, (g_Resource.uiMaxAge%1000)*1000);
+	setTimeValue(&tMaxAge, g_Resource1.uiMaxAge/1000, (g_Resource1.uiMaxAge%1000)*1000);
 	
-	addTimeValue(&tCacheExpired, g_Resource.tCachedTime, tMaxAge);
+	addTimeValue(&tCacheExpired, g_Resource1.tCachedTime, tMaxAge);
 	
 	while(client)
 	{
@@ -406,7 +556,7 @@ void *pthreadWatchResource(void *arg)
 			
 	while(!g_iExit)
 	{
-		if(g_Resource.iClientNumber)
+		if(g_Resource1.iClientNumber)
 		{
 			//TODO: get current time
 			gettimeofday(&tStart, NULL);
@@ -428,7 +578,7 @@ void *pthreadWatchResource(void *arg)
 			
 			//TODO: 
 #elif 0
-			struct __client *client = g_Resource.next;
+			struct __client *client = g_Resource1.next;
 			struct __client *cTemp = NULL;
 			struct timeval tTemp = NULL;
 			tTemp.tv_sec = tv_sec.tv_sec + (60*60);
@@ -458,7 +608,7 @@ void *pthreadWatchResource(void *arg)
 #endif	//test			
 			
 			//TODO: search all clients registered
-			struct __client *client = g_Resource.next;
+			struct __client *client = g_Resource1.next;
 			while(client)
 			{
 				//TODO: find scheduled client
@@ -479,9 +629,9 @@ void *pthreadWatchResource(void *arg)
 						setTimeValue(&(msg.server_finished), 0, 0);
 						
 						//TODO: set message with time information		
-						msg.resource = g_Resource.iCachedResource;
-						msg.uiMaxAge = g_Resource.uiMaxAge - g_Resource.uiCachedAge;
-						//printf("%s:uiMaxAge=%d(%d-%d)\n", __func__, msg.uiMaxAge, g_Resource.uiMaxAge, g_Resource.uiCachedAge);	
+						msg.resource = g_Resource1.iCachedResource;
+						msg.uiMaxAge = g_Resource1.uiMaxAge - g_Resource1.uiCachedAge;
+						//printf("%s:uiMaxAge=%d(%d-%d)\n", __func__, msg.uiMaxAge, g_Resource1.uiMaxAge, g_Resource1.uiCachedAge);	
 						
 						//TODO: get current time
 						gettimeofday(&tEnd, NULL);
@@ -527,7 +677,7 @@ void *pthreadWatchResource(void *arg)
 			//updateClient();
 			
 			usleep(5*1000);
-		}	//if(g_Resource.iClientNumber)
+		}	//if(g_Resource1.iClientNumber)
 		
 		usleep(50*1000);
 	}
@@ -607,7 +757,13 @@ int main(int argc , char *argv[])
 		exit(0);
 	}	//if((s = socket
 		
-
+/*
+addObserver2(200, 2, 1000, 1200);
+addObserver2(100, 1, 1000, 800);
+addObserver2(300, 3, 1000, 1000);
+dumpObserver2();
+return;//while(1);
+*/
 	//TODO: init proxy connection
 	int option = 1;
 	setsockopt( s, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(int) );
