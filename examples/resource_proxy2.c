@@ -1,6 +1,12 @@
 /*
 	build : gcc -o resource_proxy resource_proxy.c -lpthread	
 	execution : ./resource_proxy 2048 127.0.0.1 1024 
+	1. ./resource_proxy 2048 127.0.0.1 1024 0[cache off] 0[align off]
+	2. ./resource_proxy 2048 127.0.0.1 1024 1[cache on] 0[align off]
+	3. ./resource_proxy 2048 127.0.0.1 1024 0[cache on] 0[align off]
+	4. ./resource_proxy 2048 127.0.0.1 1024 1[cache on] 0[align off]
+	5. ./resource_proxy 2048 127.0.0.1 1024 1[cache on] 1[align on]
+	6. ./resource_proxy 2048 127.0.0.1 1024 1[cache on] 2[new alogrithm]
 */
  
 #include <stdio.h>
@@ -24,6 +30,8 @@ int g_piSocketClient[MAX_SOCK] = {0, };
 
 pthread_mutex_t m_lock;
 
+unsigned int g_uiCacheMode = 0;
+unsigned int g_uiCacheAlgorithm = 0;
 int g_iSocketServer = 0;
 struct __resource g_Resource;
 
@@ -250,7 +258,7 @@ int handleMessage(struct __message *arg)
 		struct timeval tEnd;
 		
 		//TODO: get cached resource
-		if(isCachedDataValid(tStart))
+		if(g_uiCacheMode && isCachedDataValid(tStart))
 		{
 			//TODO: update cache timing information
 			updateCache(tStart);
@@ -460,7 +468,7 @@ void *pthreadWatchResource(void *arg)
 					struct timeval tEnd;
 					
 					//TODO: if cached resource is valid, then use it
-					if(isCachedDataValid(tStart))
+					if(g_uiCacheMode && isCachedDataValid(tStart) )
 					{
 						//TODO: update cache timing information
 						updateCache(tStart);
@@ -564,11 +572,21 @@ int main(int argc , char *argv[])
 		
 	pthread_mutex_init(&m_lock, NULL);
 		
-	if(argc != 4)
+	if(argc < 4)
 	{
-		printf("usage : %s [proxy_port#] [server_ip#] [server_port#] \n", argv[0]);
+		printf("usage : %s [proxy_port#] [server_ip#] [server_port#] [cache_mode#] [cache_algorithm#]\n", argv[0]);
 		exit(0);
 	}	//if(argc
+	else if(argc < 6)
+	{
+		g_uiCacheMode = 0;
+		g_uiCacheAlgorithm = 0;
+	}
+	else
+	{
+		g_uiCacheMode = atoi(argv[4]);
+		g_uiCacheAlgorithm = atoi(argv[5]);
+	}
 	
 	//TODO: init timer handler
 	//initTimerHandler();
