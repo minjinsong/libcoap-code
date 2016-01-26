@@ -66,7 +66,7 @@ int getResource(struct __resource1 *resource, int *iResource, int iCached)
 	return 0;
 }
 
-int dumpObserver()
+int dumpObserver1()
 {
 	struct __client *client; 
 	client = g_Resource1.next;
@@ -80,7 +80,7 @@ int dumpObserver()
 	return 0;
 }
 
-int addObserver(int iId, int iFd, unsigned int uiResource, unsigned int uiReqInterval)
+int addObserver1(int iId, int iFd, unsigned int uiResource, unsigned int uiReqInterval)
 {
 	struct __client *pObserver;
 	struct __client *pNew;
@@ -149,8 +149,8 @@ struct __cache *createCache(void)
 	pNewCache->uiCachedAge = 0;
 	setTimeValue(&(pNewCache->tCachedTime), 0, 0);
 	pNewCache->nextCache = NULL;
-	pNewCache->uiClientNumber = 0;
-	pNewCache->nextClient = NULL;
+	//pNewCache->uiClientNumber = 0;
+	//pNewCache->nextClient = NULL;
 	
 	return pNewCache;
 }
@@ -169,88 +169,154 @@ struct __client *createClient(void)
 	return pClient;
 }
 
-int dumpObserver2()
+struct __sched *createSched(struct timeval timeSched)
 {
-	struct __cache *pCache = g_Resource2.nextCache;
+	struct __sched *pSched;
+	
+	pSched = (struct __sched *)malloc(sizeof(struct __sched));
+	setTimeValue(&(pSched->tSchedTime), timeSched.tv_sec, timeSched.tv_usec);
+	pSched->uiClientNumber = 0;
+	pSched->nextClient = NULL;
+	
+	return pSched;
+}
 
-	while(pCache)
+int dumpObserver2(void)
+{
+	struct __sched *pSched = g_Resource2.nextSched;
+
+	while(pSched)
 	{
-		struct __client *pClient = pCache->nextClient;
+		struct __client *pClient = pSched->nextClient;
 		while(pClient)
 		{
 			printf("(id=%d, fd=%d) ", pClient->iId, pClient->iFd);
 			pClient = pClient->nextClient;
 		}
-		pCache = pCache->nextCache;
+		pSched = pSched->nextSched;
+	}	
+	return 0;
+}
+
+int removeClientFromObserverList(struct __client *client)
+{
+	
+}
+
+int insertClientToObserverList(struct __client *client)
+{
+	struct __sched *pSched = g_Resource2.nextSched;
+	int iFound = 0;
+		
+	while(pSched)
+	{
+		if(isEqualTo(client->tSched, pSched->tSchedTime))
+		{
+			struct __client *pClient = pSched->nextClient;
+			pSched->nextClient = client;
+			client->nextClient = pClient;
+			pSched->uiClientNumber++;
+			iFound = 1;
+			break;
+		}
+		else if(isBiggerThan(pSched->tSchedTime, client->tSched))
+		{
+			//TODO: create sched and add client
+			iFound = 1;
+			break;
+		}
+		else	//if client->tsched < psched->tSched
+		{
+			pSched = pSched->nextSched;
+			
+			if( (pSched==NULL) && (iFound==0) )
+			{
+				//TODO: 
+			}
+		}
 	}
+	
+	
+	
 	return 0;
 }
 
 //TODO: add observer into any list
-int addObserver2(int iId, int iFd, unsigned int uiResource, unsigned int uiReqInterval)
+int addObserver2(int iId, int iFd, unsigned int uiResource, unsigned int uiReqInterval, struct timeval tStart)
 {
-	struct __client *pObserver;
-	//struct __client *pNew;
+	struct __cache *pCache;
+	struct __sched *pSched;
+	struct __client *pNewClient;
+	struct __client *pClient;
 	struct __client *pPrev;
 	int fAdd;
 	
-	struct __cache *pCache;
-	struct __client *pClient;
+	struct __message msg = {0x0, };
 	
 	//TODO: if there is no cache
-	if( (g_Resource2.uiCacheNumber==0) && (g_Resource2.nextCache==NULL) )
+	if( (g_Resource2.uiSchedNumber==0) && (g_Resource2.nextSched==NULL) )
 	{
-		g_Resource2.nextCache = (struct __cache *)createCache();
-		g_Resource2.uiCacheNumber++;
-	}	
-	pCache = g_Resource2.nextCache;
-	//while(pCache)
-	{
-		pClient = (struct __client *)createClient();
-		pClient->uiReqInterval = uiReqInterval;
-		pClient->iId = iId;
-		pClient->iFd = iFd;
-		/*
-		struct timeval tNow, tB;
-		tB.tv_sec = uiReqInterval/1000;
-		tB.tv_usec = (uiReqInterval%1000)*1000;
+		struct timeval tAdd, tResult;
+		setTimeValue(&tAdd, uiReqInterval/1000, (uiReqInterval%1000)*1000);
+		//gettimeofday(&tNow, NULL);
+		addTimeValue(&tResult, tStart, tAdd);
 		
-		gettimeofday(&tNow, NULL);
-		addTimeValue(&(pClient->tSched), tNow, tB);
-		*/
+		g_Resource2.nextSched = (struct __sched *)createSched(tResult);
+		g_Resource2.uiSchedNumber++;
+	}	
+	pSched = g_Resource2.nextSched;
 	
-		if(pCache->nextClient == NULL)
+	//while(pSched)
+	{
+		pNewClient = (struct __client *)createClient();
+		pNewClient->uiReqInterval = uiReqInterval;
+		pNewClient->iId = iId;
+		pNewClient->iFd = iFd;
+	
+		if(pSched->nextClient == NULL)
 		{
-			pCache->nextClient = pClient;
-			pCache->uiClientNumber++;
+			pSched->nextClient = pNewClient;
+			pSched->uiClientNumber++;
 		}
 		else
 		{	
-			pObserver = pCache->nextClient;
+			pClient = pSched->nextClient;
 			fAdd = 1;
-			while(pObserver)
+			while(pClient)
 			{
-				if(pObserver->iId == iId)
+				if(pClient->iId == iId)
 				{
-					if(pObserver->iFd != iFd)
-						pObserver->iFd = iFd;
-					
+					if(pClient->iFd != iFd)
+						pClient->iFd = iFd;
 					fAdd = 0;
 					break;
 				}
 				else 
 				{
-					pPrev = pObserver;
-					pObserver = pObserver->nextClient;
+					pPrev = pClient;
+					pClient = pClient->nextClient;
 				}
-			}
+				
+			}	//while(pClient)
+			
 			if(fAdd)
 			{
-				pPrev->nextClient = pClient;
-				g_Resource1.iClientNumber++;
+				pPrev->nextClient = pNewClient;
+				pSched->uiClientNumber++;
+				
+				//TODO: if threre is no scheduled observer, then set first schedule
+				/*
+				if( (pSched->tSchedTime.tv_sec==0) && (pSched->tSchedTime.tv_usec==0) )
+				{
+					struct timeval tNow, tAdd;
+					setTimeValue(&tAdd, uiReqInterval/1000, (uiReqInterval%1000)*1000);
+					gettimeofday(&tNow, NULL);
+					addTimeValue(&(pSched->tSchedTime), tNow, tAdd);
+				}
+				*/
 			}
 		}
-	}//while(pCache)
+	}//while(pSched)
 		
 	return 0;
 }
@@ -258,27 +324,106 @@ int addObserver2(int iId, int iFd, unsigned int uiResource, unsigned int uiReqIn
 void *pthreadWatchResource2(void *arg)
 {
 	//struct timeval timeSched;
-	//struct timeval tStart;
+	struct timeval tStart;
 			
 	while(!g_iExit)
 	{
-		if( (g_Resource2.uiCacheNumber>0) && (g_Resource2.nextCache) )
+		if( (g_Resource2.uiSchedNumber>0) && (g_Resource2.nextSched) )
 		{
-			struct __cache *cache = g_Resource2.nextCache;
-			while(cache)
+			struct __sched *sched = g_Resource2.nextSched;
+			
+			gettimeofday(&tStart, NULL);
+			
+			while(sched)
 			{
-				if( (cache->uiClientNumber>0) && (cache->nextClient) )
+				//TODO: find scheduled client
+				if(isBiggerThan(tStart, sched->tSchedTime)) 
 				{
-					struct __client *client = cache->nextClient;
+					struct __message msg;
+					struct timeval tEnd;
+					
+					//TODO: if cached resource is valid, then use it
+					if(g_uiCacheMode && isCachedDataValid(tStart) )
+					{
+						//TODO: update cache timing information
+						updateCache(tStart);
+						
+						//TODO: set server process time with zero
+						setTimeValue(&(msg.server_recved), 0, 0);
+						setTimeValue(&(msg.server_started), 0, 0);
+						setTimeValue(&(msg.server_finished), 0, 0);
+						
+						//TODO: set message with time information		
+						//msg.resource = g_Resource2.iCachedResource;
+						//msg.uiMaxAge = g_Resource2.uiMaxAge - g_Resource2.uiCachedAge;
+						
+						//TODO: get current time
+						gettimeofday(&tEnd, NULL);
+					}
+					else
+					{
+						//TODO: init cache
+						//initCache();
+						
+						//TODO: get a fresh resource from a server
+						getResourceFromServer(&msg);
+						
+						//TODO: get current time
+						gettimeofday(&tEnd, NULL);
+					
+						//TODO: set cached with information
+						setCache(msg, tEnd);
+					}
+					
+					//TODO: set client process time
+					setTimeValue(&(msg.client_recved), 0, 0);
+					setTimeValue(&(msg.client_started), 0, 0);
+					
+					//TODO: set proxy process time
+					setTimeValue(&(msg.proxy_recved), tStart.tv_sec, tStart.tv_usec);
+					setTimeValue(&(msg.proxy_started), tStart.tv_sec, tStart.tv_usec);
+					setTimeValue(&(msg.proxy_finished), tEnd.tv_sec, tEnd.tv_usec);
 					
 					
+					struct __client *client = sched->nextClient;
+					while(client)
+					{
+						//TODO: send information as response from proxy to client
+						int temp = send(client->iFd, &msg, sizeof(struct __message), 0);
+						
+						
+						//TODO: remove client
+						
+						//TODO: update client
+						
+						//TODO: insert client
+						struct __client *tmpClient = client;
+						struct timeval tNew, tTemp;
+						setTimeValue(&tTemp, tmpClient->uiReqInterval/1000, (tmpClient->uiReqInterval%1000)*1000);
+						addTimeValue(&tNew, tStart, tTemp);
+						setTimeValue(&tmpClient->tSched, tNew.tv_sec, tNew.tv_usec);
+						//insertObserver(tmpClient);
+						
+						
+						client = client->nextClient;
+					}
 					
-					client = cache->nextClient;
+					//TODO: set a new scheduled time of client
+					/*
+					struct timeval tB;
+					tB.tv_sec = client->uiReqInterval/1000;
+					tB.tv_usec = (client->uiReqInterval%1000)*1000;
+					addTimeValue(&(client->tSched), client->tSched, tB);
+					*/
+					
+					//TODO: remove this sched
+					
 				}
-				
-				cache = cache->nextCache;
-			}
+				sched = sched->nextSched;
+			}//while(sched)
 		}
+		
+		usleep(5*1000);
 	}
 	
 }
@@ -402,8 +547,13 @@ int handleMessage(struct __message *arg)
 	//TODO: use cached resource
 	if(msg.cmd == RESOURCE_CMD_REGISTER)
 	{
-		addObserver(msg.owner, msg.iFd, msg.resource, msg.req_dur);
-		dumpObserver();
+#if CONFIG_MODE_OBSERVER1
+		addObserver1(msg.owner, msg.iFd, msg.resource, msg.req_dur);
+		dumpObserver1();
+#else
+		addObserver2(msg.owner, msg.iFd, msg.resource, msg.req_dur, tStart);
+		dumpObserver2();
+#endif		
 	}
 	else if (msg.cmd == RESOURCE_CMD_GET)
 	{
@@ -759,7 +909,9 @@ int main(int argc , char *argv[])
 		
 /*
 addObserver2(200, 2, 1000, 1200);
+dumpObserver2();
 addObserver2(100, 1, 1000, 800);
+dumpObserver2();
 addObserver2(300, 3, 1000, 1000);
 dumpObserver2();
 return;//while(1);
@@ -783,7 +935,8 @@ return;//while(1);
 	g_piFdMax = s + 1;
 
 	pthread_t threadId = 0;
-	pthread_create(&threadId, NULL, pthreadWatchResource, (void *)NULL);
+	//pthread_create(&threadId, NULL, pthreadWatchResource, (void *)NULL);
+	pthread_create(&threadId, NULL, pthreadWatchResource2, (void *)NULL);
 
 	while(1)
 	{
@@ -828,7 +981,7 @@ return;//while(1);
 					if((n = recv(g_piSocketClient[i], &rcv, sizeof(struct __message), 0)) <= 0)
 					{
 						removeObserver(g_piSocketClient[i]);
-						dumpObserver();
+						dumpObserver1();
 						removeClient(i);
 						continue;
 					}

@@ -57,28 +57,11 @@ int handleMessage(struct __message *arg)
 	
 	gettimeofday(&timeEnd, NULL);
 
-#if 1
 	setTimeValue(&(msg.server_started), timeStart.tv_sec, timeStart.tv_usec);
 	setTimeValue(&(msg.server_finished), timeEnd.tv_sec, timeEnd.tv_usec);
-#else
-	msg.server_started.tv_sec = timeStart.tv_sec;
-	msg.server_started.tv_usec = timeStart.tv_usec;
-	msg.server_finished.tv_sec = timeEnd.tv_sec;
-	msg.server_finished.tv_usec = timeEnd.tv_usec;
-#endif
 	
-#if 1	//Time Resource
 	msg.resource =  timeEnd.tv_sec%1000000;
 	msg.uiMaxAge = (1000000-timeEnd.tv_usec)/1000;
-#else
-	msg.resource =  timeEnd.tv_usec%1000;
-	msg.uiMaxAge = RESOURCE_DEFAULT_DELAY;
-	/*
-	struct timeval tTemp;
-	subTimeValue(&tTemp, timeEnd, timeStart);
-	msg.uiMaxAge = tTemp.tv_sec*1000 + tTemp.tv_usec/1000;
-	*/
-#endif	
 	
 	//TODO: tx delay
 	usleep(DELAY_SERVER_TX*1000);	

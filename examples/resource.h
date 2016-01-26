@@ -1,3 +1,6 @@
+#define CONFIG_MODE_OBSERVER1		0
+#define CONFIG_MODE_OBSERVER2		1
+
 #define ENABLE_LINKEDLIST				0		//1:using linked list for managing clients
 #define ENABLE_HANDLETHREAD			1		//1:handling messages with thread
 #define ENABLE_MUTEX						1		//1:using mutex for handling resource
@@ -53,7 +56,6 @@ struct __client {
 	int iFd;
 	unsigned int uiReqInterval;
 	struct timeval tSched;
-//	struct timeval tReqInterval;
 	struct __client *next;
 	struct __client *nextClient;
 };
@@ -65,6 +67,13 @@ struct __client {
 		unsigned int uiCachedAge;
 		struct timeval tCachedTime;
 		struct __cache *nextCache;
+		//unsigned int uiClientNumber;
+		//struct __client *nextClient;
+	};
+	
+	struct __sched {
+		struct timeval tSchedTime;
+		struct __sched *nextSched;
 		unsigned int uiClientNumber;
 		struct __client *nextClient;
 	};
@@ -73,6 +82,8 @@ struct __client {
 		char strName[128];
 		unsigned int uiCacheNumber;
 		struct __cache *nextCache;
+		unsigned int uiSchedNumber;
+		struct __sched *nextSched;
 	};
 
 	struct __resource1 {
@@ -158,4 +169,15 @@ int isBiggerThan(struct timeval timeA, struct timeval timeB)
 			ret = 0;
 	}
 	return ret;
+}
+
+int isEqualTo(struct timeval timeA, struct timeval timeB)
+{
+	int ret = 0;
+	
+	if( (timeA.tv_sec==timeB.tv_sec)  && (timeA.tv_usec==timeB.tv_usec) )
+	{
+		ret = 1;
+	}
+	return ret;	
 }
