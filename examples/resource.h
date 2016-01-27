@@ -1,5 +1,5 @@
-#define CONFIG_MODE_OBSERVER1		0
-#define CONFIG_MODE_OBSERVER2		1
+#define CONFIG_MODE_OBSERVER1		1
+#define CONFIG_MODE_OBSERVER2		0
 
 #define ENABLE_LINKEDLIST				0		//1:using linked list for managing clients
 #define ENABLE_HANDLETHREAD			1		//1:handling messages with thread
@@ -12,10 +12,12 @@
 #define RESOURCE_DELAY_WATCHER	(1000)				//1ms
 #define DELAY_PROXY_RX					(5)
 #define DELAY_PROXY_TX					(3)
+#define DELAY_PROXY_TIMESLICE		(10)		//ms
 //#define DELAY_PROXY_PROCESS		()
 #define DELAY_SERVER_RX					(12)		//ms
 #define DELAY_SERVER_TX					(8)			//ms
 #define DELAY_SERVER_PROCESS		(RESOURCE_DEFAULT_DELAY)
+
 
 enum {
 	RESOURCE_CMD_GET			= 0x0,

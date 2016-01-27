@@ -1,6 +1,6 @@
 /*
-	build : gcc -o client_chat client_chat.c
-	execution : ./resource_client2 127.0.0.1 2048 1 200
+	build : gcc -o resource_client2 resource_client2.c
+	execution : ./resource_client2 127.0.0.1 2048 1 800
 	1. ./resource_client2 127.0.0.1 2048 0[request] 800[interval]
 	2. ./resource_client2 127.0.0.1 2048 0[request] 800[interval]
 	3. ./resource_client2 127.0.0.1 2048 1[observe] 800[interval]

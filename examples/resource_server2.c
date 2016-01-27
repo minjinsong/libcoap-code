@@ -1,6 +1,8 @@
 /*
 	build : gcc -o resource_server resource_server.c -lpthread	
-	execution : ./resource_server 1024
+	execution : ./resource_server 10[port#] 12[rx_delay#ms] 8[tx_delay#ms] 5[process_delay#ms] 200[max_age#ms]
+	1. ./resource_server 1024[port#] 
+	2. ./resource_server 1024[port#] 12[rx_delay#ms] 8[tx_delay#ms] 5[process_delay#ms] 200[max_age#ms]
 */
  
 
@@ -31,8 +33,6 @@ int handleMessage(struct __message *arg)
 	struct timeval timeStart, timeEnd;
 	struct __message msg;
 
-	printf("6 ");
-	
 	//TODO: rx delay
 	usleep(DELAY_SERVER_RX*1000);
 
@@ -44,8 +44,6 @@ int handleMessage(struct __message *arg)
 	pthread_mutex_lock(&m_lock);
 #endif
     		
-   printf("7 ");
-   
 	//TODO: process delay
 	usleep(DELAY_SERVER_PROCESS*1000);
 	
@@ -53,8 +51,6 @@ int handleMessage(struct __message *arg)
 	pthread_mutex_unlock(&m_lock);
 #endif	//#if ENABLE_MUTEX
 
-	printf("8 ");
-	
 	gettimeofday(&timeEnd, NULL);
 
 	setTimeValue(&(msg.server_started), timeStart.tv_sec, timeStart.tv_usec);
@@ -66,12 +62,10 @@ int handleMessage(struct __message *arg)
 	//TODO: tx delay
 	usleep(DELAY_SERVER_TX*1000);	
 
-	printf("[%d-%d]Resource=%d, uiMaxAge=%d, msg.iFd=%d ", msg.owner, msg.cnt, msg.resource, msg.uiMaxAge, msg.iFd);
+	//printf("[%d-%d]Resource=%d, uiMaxAge=%d, msg.iFd=%d ", msg.owner, msg.cnt, msg.resource, msg.uiMaxAge, msg.iFd);
 	
 	int temp = send(msg.iFd, &msg, sizeof(struct __message), 0);
 	
-	printf("9:temp=%d\n", temp);
-
 	return 0;
 }
 
@@ -130,12 +124,12 @@ int main(int argc , char *argv[])
 		{
 			FD_ZERO(&read_fds);
 			FD_SET(s, &read_fds);
-printf("11 ");			
+
 			for(i=0; i<g_iClientMax; i++)
 			{
 				FD_SET(g_piSocketClient[i], &read_fds);
 			}	//for(i=0;
-printf("12 ");
+
 			g_piFdMax = getFdMax(s) + 1;
 			if(select(g_piFdMax, &read_fds, (fd_set *)0, (fd_set *)0, (struct timeval *)0) < 0)
 			{
@@ -143,8 +137,6 @@ printf("12 ");
 				exit(0);
 			}//if(select
 			
-			printf("2 ");
-				
 			if(FD_ISSET(s, &read_fds))
 			{
 				client = sizeof(struct sockaddr_in);
@@ -163,14 +155,10 @@ printf("12 ");
 				printf("server : user#%d added!\n", g_iClientMax);
 			}//if(FD_ISSET
 
-			printf("3 ");
-
 			for(i=0; i<g_iClientMax; i++)
 			{
 				if(FD_ISSET(g_piSocketClient[i], &read_fds))
 				{
-					printf("4 ");
-					
 					memset(&rcv, 0x0, sizeof(struct __message));
 					if((n = recv(g_piSocketClient[i], &rcv, sizeof(struct __message), 0)) <= 0)
 					{
@@ -184,8 +172,6 @@ printf("12 ");
 						continue;
 					}
 					
-					printf("5 ");
-
 					struct timeval timeRecv;
 					gettimeofday(&timeRecv, NULL);
 					rcv.server_recved.tv_sec = timeRecv.tv_sec;
@@ -202,7 +188,6 @@ printf("12 ");
 					//memcpy(&trans, &rcv, sizeof(struct __message));
 					//int temp = send(g_piSocketClient[i], &trans, sizeof(struct __message), 0);
 					
-					printf("10 ");
 #endif
 				} //if(FD_ISSET(	
 			} //for(i=0
