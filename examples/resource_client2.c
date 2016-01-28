@@ -6,7 +6,7 @@
 	3. ./resource_client2 127.0.0.1 2048 1[observe] 800[interval]
 	4. ./resource_client2 127.0.0.1 2048 1[observe] 800[interval]
 	5. ./resource_client2 127.0.0.1 2048 1[observe] 800[interval]
-	6. ./resource_client2 127.0.0.1 2048 1[observe] 800[interval]
+	6. ./resource_client2 127.0.0.1 2048 1[observe] 800[interval] log.txt[log_name]
 */
  
 #include <stdio.h>
@@ -20,6 +20,8 @@
 #include "resource.h"
 
 #define ENABLE_REPEATE				1		//1:send message to server repeatly
+char g_strLogName[128] = {0, };
+//FILE *fLog;
 
 int initMessage(struct __message *msg)
 {
@@ -44,12 +46,14 @@ int dumpMessage(struct __message msg)
 	struct timeval tRecv1;
 
 	//TODO: dump response
-	if(msg.client_started.tv_sec)
-		subTimeValue(&timeTrans, msg.client_finished, msg.client_started);
-	else if(msg.proxy_recved.tv_sec)
-		subTimeValue(&timeTrans, msg.client_finished, msg.proxy_recved);
-	else if(msg.proxy_started.tv_sec)
+	//if(msg.client_started.tv_sec)
+	//	subTimeValue(&timeTrans, msg.client_finished, msg.client_started);
+	//else if(msg.proxy_recved.tv_sec)
+	//	subTimeValue(&timeTrans, msg.client_finished, msg.proxy_recved);
+	//else if(msg.proxy_started.tv_sec)
+	if(msg.proxy_started.tv_sec)
 		subTimeValue(&timeTrans, msg.client_finished, msg.proxy_started);	
+	/*
 	if(msg.client_started.tv_sec)
 		subTimeValue(&tSend1, msg.proxy_started, msg.client_started);
 	else 
@@ -57,6 +61,7 @@ int dumpMessage(struct __message msg)
 		tSend1.tv_sec = 0;
 		tSend1.tv_usec = 0;
 	}
+	*/
 	if( (msg.server_started.tv_sec>0) && (msg.server_finished.tv_sec>0) )
 	{
 		subTimeValue(&tSend2, msg.server_started, msg.proxy_started);
@@ -75,15 +80,13 @@ int dumpMessage(struct __message msg)
 	
 	subTimeValue(&tRecv1, msg.client_finished, msg.proxy_finished);
 	
-	printf("[%d-%d]R=%d, MaxAge=%d, Rsp=%ld.%06ldms(%ld.%06ld)(%ld.%06ld)(%ld.%06ld)(%ld.%06ld)(%ld.%06ld)\n", 
+	printf("[%d-%d]R=%d, MaxAge=%d, Rsp=%ld.%06ldms(%ld.%06ld)(%ld.%06ld)(%ld.%06ld)(%ld.%06ld)\n", 
 		msg.owner,	\
 		msg.cnt,	\
 		msg.resource,	\
 		msg.uiMaxAge,	\
 		timeTrans.tv_sec%1000,	\
 		timeTrans.tv_usec,	\
-		tSend1.tv_sec%1000,	\
-		tSend1.tv_usec,	\
 		tSend2.tv_sec%1000,	\
 		tSend2.tv_usec,	\
 		tServer.tv_sec%1000,	\
@@ -93,6 +96,30 @@ int dumpMessage(struct __message msg)
 		tRecv1.tv_sec%1000,	\
 		tRecv1.tv_usec
 	);
+	
+	FILE *pfileLog = fopen(g_strLogName, "a");
+	/*
+	fprintf(pfileLog, "Hello Minjin!MaxAge=%d\n", msg.uiMaxAge);
+	fprintf(pfileLog, "Hello Minjin!owner=%d\n", msg.owner);
+	*/
+	fprintf(pfileLog, "[%d-%d]R=%d; MaxAge=%d; Rsp=%ld.%06ld;(%ld.%06ld)(%ld.%06ld)(%ld.%06ld)(%ld.%06ld)\n", 
+		msg.owner,	\
+		msg.cnt,	\
+		msg.resource,	\
+		msg.uiMaxAge,	\
+		timeTrans.tv_sec%1000,	\
+		timeTrans.tv_usec,	\
+		tSend2.tv_sec%1000,	\
+		tSend2.tv_usec,	\
+		tServer.tv_sec%1000,	\
+		tServer.tv_usec,	\
+		tRecv2.tv_sec%1000,	\
+		tRecv2.tv_usec,	\
+		tRecv1.tv_sec%1000,	\
+		tRecv1.tv_usec
+	);
+	
+	fclose(pfileLog);
 	
 	return 0;
 }
@@ -131,17 +158,33 @@ int main(int argc, char *argv[])
 		printf("usage2 : %s [proxy_ip#] [proxy_port#] [monitoring_mode#] [monitoring_interval#]\n", argv[0]);
 		exit(0);
 	}	//if(argc
-	else if(argc == 5)
+	else if(argc >= 5)
 	{
 		g_monMode = atoi(argv[3]);
 		g_monInterval = atoi(argv[4]);
+		
+		if(argc == 6)
+		{
+			strncpy(g_strLogName, argv[5], strlen(argv[5]));
+		}
+		else
+		{
+			strncpy(g_strLogName, CLIENT_LOG_NAME, strlen(CLIENT_LOG_NAME));
+		}
 	}
-	
+	/*
+	fLog = fopen(g_strLogName, "w");
+	printf("fLog=%d\n", fLog);
+	fprintf(fLog, "Hello Minjin\n");
+	fprintf(fLog, "Hello Minjin!!!\n");
+	fclose(fLog);
+	*/
 	if( (s=socket(PF_INET, SOCK_STREAM, 0)) < 0 )
 	{
 		printf("client : socket failed!\n");
 		exit(0);
 	}	//if( (s=socket
+	
 	
 	bzero((char *)&proxy_addr, sizeof(struct sockaddr_in));
 	proxy_addr.sin_family = AF_INET;
@@ -232,6 +275,8 @@ int main(int argc, char *argv[])
 			}
 		}
 	}	//while(1)
+	
+	//fclose(fLog);
 	
 	return 0;
 }	//int main(

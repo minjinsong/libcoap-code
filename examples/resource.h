@@ -18,6 +18,8 @@
 #define DELAY_SERVER_TX					(8)			//ms
 #define DELAY_SERVER_PROCESS		(RESOURCE_DEFAULT_DELAY)
 
+#define CLIENT_LOG_NAME					"log.txt"
+
 
 enum {
 	RESOURCE_CMD_GET			= 0x0,

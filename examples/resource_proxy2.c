@@ -213,23 +213,7 @@ int isDividableValue(struct timeval *tRet, unsigned int uiReqInterval)
 
 int getSchedTime1(struct timeval *tRet, struct timeval tNow, unsigned int uiReqInterval)
 {
-	//struct timeval tTemp;
-	struct timeval tAdd;
-	struct timeval tArr[10];
-	
-	//tAdd.tv_sec = iQuntumn/1000;
-	//tAdd.tv_usec = iQuntumn*1000;
-	
-	//addTimeValue(&tTemp, tNow, tAdd);
 	struct __client *pClient = g_Resource1.next;
-	
-	//unsigned int iX = pClient->uiReqInterval;
-
-	struct timeval tR;
-	struct timeval tA;
-	struct timeval tB;
-	//unsigned int uiB;
-	int i = 0;
 	
 	if(g_Resource1.iClientNumber == 0)
 	{
@@ -262,6 +246,13 @@ int getSchedTime1(struct timeval *tRet, struct timeval tNow, unsigned int uiReqI
 		}
 		else
 		{
+			unsigned int iX = pClient->uiReqInterval;
+			struct timeval tAdd;
+			struct timeval tArr[10];
+			//struct timeval tTemp;
+			//addTimeValue(&tTemp, tNow, tAdd);
+
+			int i = 0;
 			//TODO: the largest 
 			/*
 			for(i=0; i<10; i++)
@@ -960,7 +951,7 @@ void *pthreadWatchResource(void *arg)
 		if(g_Resource1.iClientNumber)
 		{
 			//TODO: get current time
-			gettimeofday(&tStart, NULL);
+			//gettimeofday(&tStart, NULL);
 
 #if 0
 			//TODO: check cache resource age and next scheduled message
@@ -1012,6 +1003,8 @@ void *pthreadWatchResource(void *arg)
 			struct __client *client = g_Resource1.next;
 			while(client)
 			{
+				gettimeofday(&tStart, NULL);
+				
 				//TODO: find scheduled client
 				if(isBiggerThan(tStart, client->tSched)) 
 				{
