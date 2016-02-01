@@ -765,7 +765,7 @@ int updateCache(struct timeval curTime)
 
 int handleMessage(struct __message *arg)
 {
-	struct timeval tStart, timeEnd;
+	struct timeval tStart;
 	struct __message msg = {0x0, };
 	struct __message resp = {0x0, };
 
@@ -783,7 +783,7 @@ int handleMessage(struct __message *arg)
 //#if CONFIG_MODE_OBSERVER1
 		if(g_uiCacheAlgorithm == 0)
 		{
-			addObserver1(msg.owner, msg.iFd, msg.resource, msg.req_dur);
+			addObserver0(msg.owner, msg.iFd, msg.resource, msg.req_dur);
 		}
 		else if(g_uiCacheAlgorithm == 1)
 		{
@@ -811,17 +811,19 @@ int handleMessage(struct __message *arg)
 			setTimeValue(&(msg.server_finished), 0, 0);
 			
 			//TODO: set message with time information		
-			gettimeofday(&timeEnd, NULL);
+			gettimeofday(&tEnd, NULL);
 			
 			//TODO: set message with time information		
 			msg.resource = g_Resource1.iCachedResource;
 			msg.uiMaxAge = g_Resource1.uiMaxAge - g_Resource1.uiCachedAge;
 
-			printf("CACHED! Owner=%d, R=%d, MaxAge=%d, CachedAge=%d\n", 
+			printf("CACHED! Owner=%d, R=%d, MaxAge=%d, CachedAge=%d(%ld.%06ld)\n", 
 				msg.owner,
 				g_Resource1.iCachedResource, 
 				g_Resource1.uiMaxAge,
-				g_Resource1.uiCachedAge
+				g_Resource1.uiCachedAge,
+				tEnd.tv_sec%1000,	\
+				tEnd.tv_usec
 				);
 		}
 		else
@@ -838,11 +840,13 @@ int handleMessage(struct __message *arg)
 			//TODO: set cached with information
 			setCache(msg, tEnd);
 		
-			printf("NOT cached! Owner=%d, R=%d, MaxAge=%d, CachedAge=%d\n",
+			printf("NOT cached! Owner=%d, R=%d, MaxAge=%d, CachedAge=%d(%ld.%06ld)\n",
 				msg.owner,
 				g_Resource1.iCachedResource, 
 				g_Resource1.uiMaxAge,
-				g_Resource1.uiCachedAge
+				g_Resource1.uiCachedAge,
+				tEnd.tv_sec%1000,	\
+				tEnd.tv_usec
 				);
 		}
 		
