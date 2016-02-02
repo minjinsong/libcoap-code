@@ -6,7 +6,7 @@
 	3. ./resource_client2 127.0.0.1 2048 1[observe] 800[interval]
 	4. ./resource_client2 127.0.0.1 2048 1[observe] 800[interval]
 	5. ./resource_client2 127.0.0.1 2048 1[observe] 800[interval]
-	6. ./resource_client2 127.0.0.1 2048 1[observe] 800[interval] log.txt[log_name]
+	6. ./resource_client2 127.0.0.1 2048 1[observe] 800[interval] log.txt[log_name] 100[log_count]
 */
  
 #include <stdio.h>
@@ -22,6 +22,7 @@
 #define ENABLE_REPEATE				1		//1:send message to server repeatly
 char g_strLogName[128] = {0, };
 //FILE *fLog;
+int g_iLogCount = 100;
 
 int initMessage(struct __message *msg)
 {
@@ -35,6 +36,9 @@ int initMessage(struct __message *msg)
 	msg->client_started.tv_usec = timeStart.tv_usec;
 	return 0;
 }
+
+
+static int g_iTotal = 0;
 
 int dumpMessage(struct __message msg)
 {
@@ -97,29 +101,33 @@ int dumpMessage(struct __message msg)
 		tRecv1.tv_usec
 	);
 	
-	FILE *pfileLog = fopen(g_strLogName, "a");
-	/*
-	fprintf(pfileLog, "Hello Minjin!MaxAge=%d\n", msg.uiMaxAge);
-	fprintf(pfileLog, "Hello Minjin!owner=%d\n", msg.owner);
-	*/
-	fprintf(pfileLog, "[%d-%d]R=%d; MaxAge=%d; Rsp=%ld.%06ld;(%ld.%06ld)(%ld.%06ld)(%ld.%06ld)(%ld.%06ld)\n", 
-		msg.owner,	\
-		msg.cnt,	\
-		msg.resource,	\
-		msg.uiMaxAge,	\
-		timeTrans.tv_sec%1000,	\
-		timeTrans.tv_usec,	\
-		tSend2.tv_sec%1000,	\
-		tSend2.tv_usec,	\
-		tServer.tv_sec%1000,	\
-		tServer.tv_usec,	\
-		tRecv2.tv_sec%1000,	\
-		tRecv2.tv_usec,	\
-		tRecv1.tv_sec%1000,	\
-		tRecv1.tv_usec
-	);
 	
-	fclose(pfileLog);
+	if((g_iTotal++>=10) && (g_iTotal<=g_iLogCount))
+	{
+		FILE *pfileLog = fopen(g_strLogName, "a");
+		/*
+		fprintf(pfileLog, "Hello Minjin!MaxAge=%d\n", msg.uiMaxAge);
+		fprintf(pfileLog, "Hello Minjin!owner=%d\n", msg.owner);
+		*/
+		fprintf(pfileLog, "[%d-%d]R=%d; MaxAge=%d; Rsp=%ld.%06ld;(%ld.%06ld)(%ld.%06ld)(%ld.%06ld)(%ld.%06ld)\n", 
+			msg.owner,	\
+			msg.cnt,	\
+			msg.resource,	\
+			msg.uiMaxAge,	\
+			timeTrans.tv_sec%1000,	\
+			timeTrans.tv_usec,	\
+			tSend2.tv_sec%1000,	\
+			tSend2.tv_usec,	\
+			tServer.tv_sec%1000,	\
+			tServer.tv_usec,	\
+			tRecv2.tv_sec%1000,	\
+			tRecv2.tv_usec,	\
+			tRecv1.tv_sec%1000,	\
+			tRecv1.tv_usec
+		);
+		
+		fclose(pfileLog);
+	}
 	
 	return 0;
 }
@@ -163,9 +171,14 @@ int main(int argc, char *argv[])
 		g_monMode = atoi(argv[3]);
 		g_monInterval = atoi(argv[4]);
 		
-		if(argc == 6)
+		if(argc >= 6)
 		{
 			strncpy(g_strLogName, argv[5], strlen(argv[5]));
+			
+			if(argc == 7)
+			{
+				g_iLogCount = atoi(argv[6]);
+			}
 		}
 		else
 		{
