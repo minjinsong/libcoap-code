@@ -64,53 +64,17 @@ struct __client {
 	struct __client *nextClient;
 };
 
-	struct __cache {
-		int iCachedResource;
-		unsigned int uiState;
-		unsigned int uiMaxAge;
-		unsigned int uiCachedAge;
-		struct timeval tCachedTime;
-		struct __cache *nextCache;
-		//unsigned int uiClientNumber;
-		//struct __client *nextClient;
-	};
-	
-	struct __sched {
-		struct timeval tSchedTime;
-		struct __sched *nextSched;
-		unsigned int uiClientNumber;
-		struct __client *nextClient;
-	};
-	
-	struct __resource2 {
-		char strName[128];
-		unsigned int uiCacheNumber;
-		struct __cache *nextCache;
-		unsigned int uiSchedNumber;
-		struct __sched *nextSched;
-	};
-
 	struct __resource1 {
 		char strName[128];
 		int iCachedResource;
 		unsigned int uiMaxAge;
 		unsigned int uiCachedAge;
 		struct timeval tCachedTime;
+		struct timeval tBaseTime;
 		//struct timeval tValidTime;
 		unsigned int iClientNumber;
 		struct __client *next;
 	};
-
-/*
-int subTime(struct timeval *tRet, struct timeval val1, struct timeval val2)
-{
-	struct timeval tTemp;
-	
-	tRet->tv_sec = val1.tv_sec - val2.tv_sec;
-	tRet->tv_usec = val1.tv_usec - val2.tv_usec;
-	if( tRet->tv_usec < 0 ) {tRet->tv_sec=tRet->tv_sec-1; tRet->tv_usec=tRet->tv_usec + 1000000;	}	
-}
-*/
 
 int setTimeValue(struct timeval *tRet, int iSecond, int iMicroSecond)
 {
