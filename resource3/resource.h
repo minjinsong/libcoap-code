@@ -70,10 +70,12 @@ struct __client {
 		unsigned int uiMaxAge;
 		unsigned int uiCachedAge;
 		struct timeval tCachedTime;
-		struct timeval tBaseTime;
 		//struct timeval tValidTime;
 		unsigned int iClientNumber;
 		struct __client *next;
+		
+		unsigned int uiBaseInterval;
+		struct timeval tBaseTime;
 	};
 
 int setTimeValue(struct timeval *tRet, int iSecond, int iMicroSecond)

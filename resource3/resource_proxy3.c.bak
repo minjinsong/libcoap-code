@@ -214,23 +214,49 @@ int updateBaseTime()
 	int ret;
 	struct __client *pClient;
 	
-	pClient = g_Resource1.next;
-	ret = pClient->uiReqInterval;
+#if 1
+		pClient = g_Resource1.next;
+		ret = pClient->uiReqInterval;
 		
-	while(pClient)
-	{
-		if((pClient->next!=NULL) && (pClient->next->uiReqInterval))
+		while(pClient)
 		{
-			ret = getLCM(ret, pClient->next->uiReqInterval);
+			if((pClient->next!=NULL) && (pClient->next->uiReqInterval))
+			{
+				ret = getLCM(ret, pClient->next->uiReqInterval);
+			}
+			
+			pClient = pClient->next;
 		}
-		pClient = pClient->next;
+#else	
+	unsigned int uiMin;
+	for(int i = 1; i<=(g_Resource1.next.uiReqInterval/100/*ms*/); i++)
+	{
+		pClient = g_Resource1.next;
+		uiMin =  = g_Resource1.next.uiReqInterval / i;
+		
+		while(pClient)
+		{
+			if(pClient->uiReqInterval%uiMin != 0)
+			{
+				//uiGcd = pClient->uiReqInterval;
+				ret = gcd();
+			}
+			else
+			{
+				break;
+			}
+			
+			unsigned int uiTemp = pClient->uiReqInterval;
+			
+			pClient = pClient->next;
+		}
 	}
-
+#endif	
 	struct timeval tTemp;
 	setTimeValue(&tTemp, ret/1000, (ret%1000)*1000);
 	addTimeValue(&(g_Resource1.tBaseTime), g_Resource1.tBaseTime, tTemp);
 
-	//printf("ret=%d\n", ret);
+printf("ret=%d\n", ret);
 	return ret;
 }
 

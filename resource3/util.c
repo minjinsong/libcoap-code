@@ -3,13 +3,23 @@
 
 int gcd(int a, int b)
 {
-	int i, x;
-	if(a>b)
-	{
-		for(i=1;i<=b;i++)
-		{
-			if(a%i)
-		}
-	}
-	return ret;	
+	//printf("a=%d, b=%d\n", a, b);
+	if(b==0) 
+		return a;
+	else
+		return gcd(b, a%b);
+}
+
+int lcm(int a, int b)
+{
+	return (a*b)/gcd(a, b);
+}
+
+
+int main(int argc, char *argv[])
+{
+	int m, n;
+	scanf("%d %d", &m, &n);
+	printf("gcd=%d\n", gcd(m, n));
+	printf("lcm=%d\n", lcm(m, n));
 }
