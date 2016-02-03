@@ -618,27 +618,6 @@ int getResourceFromServer(struct __message *msg)
 }
 #endif
 
-/*
-int getFirstScheduledTime(struct timeval *tRet)
-{
-	struct __client *client = g_Resource1.next;
-	struct timeval tCacheExpired;
-	struct timeval tMaxAge;
-	
-	setTimeValue(&tMaxAge, g_Resource1.uiMaxAge/1000, (g_Resource1.uiMaxAge%1000)*1000);
-	
-	addTimeValue(&tCacheExpired, g_Resource1.tCachedTime, tMaxAge);
-	
-	while(client)
-	{
-				if(isBiggerThan(tTemp, client->tSched))
-				{
-					cTemp = client;
-					tTemp = client->tSched;
-				}
-	}
-}
-*/
 void *pthreadWatchResource(void *arg)
 {
 	struct timeval timeSched;
@@ -649,13 +628,13 @@ void *pthreadWatchResource(void *arg)
 		if(g_Resource1.iClientNumber)
 		{
 			//TODO: get current time
-			gettimeofday(&tStart, NULL);
+			//gettimeofday(&tStart, NULL);
 
 			//TODO: search all clients registered
 			struct __client *client = g_Resource1.next;
 			while(client)
 			{
-				//gettimeofday(&tStart, NULL);
+				gettimeofday(&tStart, NULL);
 				
 				//TODO: find scheduled client
 				if(isBiggerThan(tStart, client->tSched))
