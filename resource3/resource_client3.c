@@ -19,6 +19,8 @@
 #include <time.h>
 #include "resource.h"
 
+unsigned int g_uiOwner;
+
 #define ENABLE_REPEATE				1		//1:send message to server repeatly
 char g_strLogName[128] = {0, };
 //FILE *fLog;
@@ -86,6 +88,11 @@ int dumpMessage(struct __message msg)
 	}
 	
 	subTimeValue(&tRecv1, msg.client_finished, msg.proxy_finished);
+	
+	if(msg.owner == 0)
+	{
+		msg.owner = g_uiOwner;
+	}
 	
 	printf("[%d-%d]R=%d, MaxAge=%d, Cached=%d, Rsp=%ld.%06ldms(%ld.%06ld)(%ld.%06ld)(%ld.%06ld)(%ld.%06ld)\n", 
 		msg.owner,	\
@@ -190,13 +197,7 @@ int main(int argc, char *argv[])
 			strncpy(g_strLogName, CLIENT_LOG_NAME, strlen(CLIENT_LOG_NAME));
 		}
 	}
-	/*
-	fLog = fopen(g_strLogName, "w");
-	printf("fLog=%d\n", fLog);
-	fprintf(fLog, "Hello Minjin\n");
-	fprintf(fLog, "Hello Minjin!!!\n");
-	fclose(fLog);
-	*/
+
 	if( (s=socket(PF_INET, SOCK_STREAM, 0)) < 0 )
 	{
 		printf("client : socket failed!\n");
@@ -225,9 +226,9 @@ int main(int argc, char *argv[])
 	memset(&msg, 0x0, sizeof(struct __message));
 	srand(time(NULL));
 	msg.owner = random()%10000;
+	g_uiOwner = msg.owner;
 	printf("CLIEND:owner=%d\n", msg.owner);
 	
-//#if !ENABLE_REPEATE
 	if(g_monMode == RESOURCE_CMD_REGISTER)
 	{
 		initMessage(&msg);
@@ -238,14 +239,13 @@ int main(int argc, char *argv[])
 			printf("client : send failed!\n");
 		}	//if(send(
 	}
-//#endif	//#if 0
 
-	while(1)
+	//while(1)
+	while(g_iTotal<=(g_iLogCount+10))
 	{
 		FD_SET(0, &read_fds);
 		FD_SET(s, &read_fds);
 
-//#if ENABLE_REPEATE	
 		if(g_monMode == RESOURCE_CMD_GET)
 		{
 			initMessage(&msg);
@@ -256,7 +256,6 @@ int main(int argc, char *argv[])
 				printf("client : send failed!\n");
 			}	//if(send(
 		}
-//#endif			
 		
 		if(select(maxfdp1, &read_fds, (fd_set *)0, (fd_set *)0, (struct timeval *)0) < 0)
 		{
@@ -293,8 +292,6 @@ int main(int argc, char *argv[])
 			}
 		}
 	}	//while(1)
-	
-	//fclose(fLog);
 	
 	return 0;
 }	//int main(

@@ -415,7 +415,7 @@ int isCachedDataValid(struct timeval curTime)
 	struct timeval timeB;
 	struct timeval timeRet;
 	int ret = 0;
-	
+//printf("+++:g_Resource1.uiCachedAge=%d, g_Resource1.uiMaxAge=%d\n", g_Resource1.uiCachedAge, g_Resource1.uiMaxAge);
 	if( (g_Resource1.uiCachedAge<g_Resource1.uiMaxAge) && (g_Resource1.tCachedTime.tv_sec>0) )
 	{
 		struct timeval tMaxAge;
@@ -433,7 +433,7 @@ int isCachedDataValid(struct timeval curTime)
 	{
 		ret = 0;
 	}
-
+//printf("---\n");
 	return ret;
 }
 
@@ -474,7 +474,6 @@ int handleMessage(struct __message *arg)
 	//TODO: use cached resource
 	if(msg.cmd == RESOURCE_CMD_REGISTER)
 	{
-//#if CONFIG_MODE_OBSERVER1
 		if(g_uiCacheAlgorithm == 0)
 		{
 			addObserver0(msg.owner, msg.iFd, msg.resource, msg.req_dur);
@@ -484,10 +483,6 @@ int handleMessage(struct __message *arg)
 			addObserver1(msg.owner, msg.iFd, msg.resource, msg.req_dur, tStart);
 		}
 		dumpObserver();
-//#else
-//		addObserver2(msg.owner, msg.iFd, msg.resource, msg.req_dur, tStart);
-//		dumpObserver2();
-//#endif		
 	}
 	else if (msg.cmd == RESOURCE_CMD_GET)
 	{
