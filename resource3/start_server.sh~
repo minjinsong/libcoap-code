@@ -1,6 +1,6 @@
 #!/bin/sh
 
-#rm -rf /tmp/server.log
+rm -rf /tmp/server.log
 rm -rf /tmp/proxy.log
 
 echo "Start Server..."

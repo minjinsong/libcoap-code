@@ -89,7 +89,7 @@ int dumpMessage(struct __message msg)
 	}
 	
 	subTimeValue(&tRecv1, msg.client_finished, msg.proxy_finished);
-	/*
+	
 	printf("tRecv1=%ld.%06ld, client_finished=%ld.%06ld, proxy_finished=%ld.%06ld\n", 
 		tRecv1.tv_sec,
 		tRecv1.tv_usec,
@@ -97,7 +97,7 @@ int dumpMessage(struct __message msg)
 		msg.client_finished.tv_usec,
 		msg.proxy_finished.tv_sec,
 		msg.proxy_finished.tv_usec);
-	*/
+	
 	if(msg.owner == 0)
 	{
 		msg.owner = g_uiOwner;
