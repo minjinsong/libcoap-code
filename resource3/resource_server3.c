@@ -62,12 +62,12 @@ int handleMessage(struct __message *arg)
 	setTimeValue(&(msg.server_started), timeStart.tv_sec, timeStart.tv_usec);
 	setTimeValue(&(msg.server_finished), timeEnd.tv_sec, timeEnd.tv_usec);
 
-#if 1
+#if 0
 	msg.resource =  timeEnd.tv_sec%1000000;
 	msg.uiMaxAge = (1000000-timeEnd.tv_usec)/1000;
 #else
 	msg.resource =  g_iCount++;
-	msg.uiMaxAge = (DELAY_SERVER_PROCESS*1000);
+	msg.uiMaxAge = (DELAY_SERVER_PROCESS);
 #endif	
 	//TODO: tx delay
 	usleep(DELAY_SERVER_TX*1000);
