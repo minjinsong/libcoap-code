@@ -4,6 +4,7 @@ MAXCOUNT=10
 RANGE=10
 
 rm -rf log10.txt
+rm -rf /tmp/proxy.log
 
 ./resource_client3 127.0.0.1 2048 1 4000 log10.txt 25 &
 
