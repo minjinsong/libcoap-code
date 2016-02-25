@@ -524,7 +524,8 @@ int isCachedDataValid(struct timeval curTime)
 	struct timeval timeB;
 	struct timeval timeRet;
 	int ret = 0;
-//printf("+++:g_Resource1.uiCachedAge=%d, g_Resource1.uiMaxAge=%d\n", g_Resource1.uiCachedAge, g_Resource1.uiMaxAge);
+//printf("%s:g_Resource1.uiCachedAge=%d, g_Resource1.uiMaxAge=%d\n", __func__, g_Resource1.uiCachedAge, g_Resource1.uiMaxAge);
+
 	if( (g_Resource1.uiCachedAge<g_Resource1.uiMaxAge) && (g_Resource1.tCachedTime.tv_sec>0) )
 	{
 		struct timeval tMaxAge;
@@ -532,7 +533,9 @@ int isCachedDataValid(struct timeval curTime)
 		setTimeValue(&tMaxAge, g_Resource1.uiMaxAge/1000, (g_Resource1.uiMaxAge%1000)*1000);
 		addTimeValue(&tTemp, g_Resource1.tCachedTime, tMaxAge);
 		//printf("%s:tMaxAge=%6ld.%06ld\n", __func__, tMaxAge.tv_sec, tMaxAge.tv_usec);
-		//printf("%s:tTemp=%6ld.%06ld\n", __func__, tTemp.tv_sec, tTemp.tv_usec);	
+		printf("%s:tTemp=%6ld.%06ld,curTime=%6ld.%06ld\n", __func__, 
+			tTemp.tv_sec, tTemp.tv_usec,
+			curTime.tv_sec, curTime.tv_usec);	
 		if(isBiggerThan(tTemp, curTime))
 			ret = 1;
 		else
@@ -542,8 +545,9 @@ int isCachedDataValid(struct timeval curTime)
 	{
 		ret = 0;
 	}
-//printf("---\n");
+
 	return ret;
+	//return 0;
 }
 
 int updateCache(struct timeval curTime)
@@ -745,13 +749,13 @@ void *pthreadWatchResource(void *arg)
 			while(client)
 			{
 				gettimeofday(&tStart, NULL);
-				
+//printf("%s:+++\n", __func__);			
 				//TODO: find scheduled client
 				if(isBiggerThan(tStart, client->tSched))
 				{
 					struct __message msg;
 					struct timeval tEnd;
-					
+#if 1	
 					//TODO: if cached resource is valid, then use it
 					if(g_uiCacheMode && isCachedDataValid(tStart) )
 					{
@@ -772,6 +776,7 @@ void *pthreadWatchResource(void *arg)
 						gettimeofday(&tEnd, NULL);
 					}
 					else
+#endif
 					{
 						//TODO: init cache
 						initCache();
@@ -807,8 +812,12 @@ void *pthreadWatchResource(void *arg)
 					tB.tv_usec = (client->uiReqInterval%1000)*1000;
 					addTimeValue(&(client->tSched), client->tSched, tB);
 					
+//printf("tStart=%ld.%06ld, tSched=%ld.%06ld\n", 
+//	tStart.tv_sec, tStart.tv_usec,
+//	client->tSched.tv_sec, client->tSched.tv_usec);
 				}
 				client = client->next;
+//printf("%s:client=0x%x\n", __func__, (unsigned int)client);
 			}
 			
 			//TODO: inser client node as time sequence
