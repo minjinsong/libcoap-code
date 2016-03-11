@@ -79,22 +79,9 @@ int dumpMessage(struct __message msg)
 	
 	
 	//TODO: dump response
-	//if(msg.client_started.tv_sec)
-	//	subTimeValue(&timeTrans, msg.client_finished, msg.client_started);
-	//else if(msg.proxy_recved.tv_sec)
-	//	subTimeValue(&timeTrans, msg.client_finished, msg.proxy_recved);
-	//else if(msg.proxy_started.tv_sec)
 	if(msg.proxy_started.tv_sec)
 		subTimeValue(&timeTrans, msg.proxy_finished, msg.proxy_started);	
-	/*
-	if(msg.client_started.tv_sec)
-		subTimeValue(&tSend1, msg.proxy_started, msg.client_started);
-	else 
-	{
-		tSend1.tv_sec = 0;
-		tSend1.tv_usec = 0;
-	}
-	*/
+
 	if( (msg.server_started.tv_sec>0) && (msg.server_finished.tv_sec>0) )
 	{
 		subTimeValue(&tSend2, msg.server_started, msg.proxy_started);
@@ -114,36 +101,7 @@ int dumpMessage(struct __message msg)
 	}
 	
 	subTimeValue(&tRecv1, msg.client_finished, msg.proxy_finished);
-	/*
-	printf("tRecv1=%ld.%06ld, client_finished=%ld.%06ld, proxy_finished=%ld.%06ld\n", 
-		tRecv1.tv_sec,
-		tRecv1.tv_usec,
-		msg.client_finished.tv_sec,
-		msg.client_finished.tv_usec,
-		msg.proxy_finished.tv_sec,
-		msg.proxy_finished.tv_usec);
-	*/
-	//if(msg.owner == 0)
-	//{
-	//	msg.owner = g_uiOwner;
-	//}
-#if 0	
-	printf("[%d-%d]R=%d, MaxAge=%d, Cached=%d, Rsp=%ld.%06ldms(%ld.%06ld)(%ld.%06ld)(%ld.%06ld)\n", 
-		msg.owner,	\
-		msg.cnt,	\
-		msg.resource,	\
-		msg.uiMaxAge,	\
-		iCached,	\
-		timeTrans.tv_sec%1000,	\
-		timeTrans.tv_usec,	\
-		tSend2.tv_sec%1000,	\
-		tSend2.tv_usec,	\
-		tServer.tv_sec%1000,	\
-		tServer.tv_usec,	\
-		tRecv2.tv_sec%1000,	\
-		tRecv2.tv_usec
-	);
-#else
+	
 	printf("[%d-%d]R=%d; MaxAge=%d; Cached=%d, Rsp=%ld.%06ld;(%ld.%06ld)(%ld.%06ld)(%ld.%06ld)\n", 
 			msg.owner,	\
 			msg.cnt,	\
@@ -159,37 +117,10 @@ int dumpMessage(struct __message msg)
 			tRecv2.tv_sec%1000,	\
 			tRecv2.tv_usec
 	);
-#endif
 	
-	//if((g_iTotal++>=10) && (g_iTotal<=(g_iLogCount+10)))
-	//if(g_iTotal++>10)
-	{
-		
-		//FILE *pfileLog = fopen("/tmp/proxy.log", "a");
-		FILE *pfileLog = fopen(g_strProxyLogName, "a");
-		
-		/*
-		fprintf(pfileLog, "Hello Minjin!MaxAge=%d\n", msg.uiMaxAge);
-		fprintf(pfileLog, "Hello Minjin!owner=%d\n", msg.owner);
-		*/
-#if 0		
-		fprintf(pfileLog, "[%d-%d]R=%d; MaxAge=%d; Cached=%d, Rsp=%ld.%06ld;(%ld.%06ld)(%ld.%06ld)(%ld.%06ld)\n", 
-			msg.owner,	\
-			msg.cnt,	\
-			msg.resource,	\
-			msg.uiMaxAge,	\
-			iCached,	\
-			timeTrans.tv_sec%1000,	\
-			timeTrans.tv_usec,	\
-			tSend2.tv_sec%1000,	\
-			tSend2.tv_usec,	\
-			tServer.tv_sec%1000,	\
-			tServer.tv_usec,	\
-			tRecv2.tv_sec%1000,	\
-			tRecv2.tv_usec
-		);
-#else
-		fprintf(pfileLog, "[%d-%d]R=%d; MaxAge=%d; Cached=%d, Rsp=%ld.%06ld, %ld.%06ld, %ld.%06ld\n", 
+	FILE *pfileLog = fopen(g_strProxyLogName, "a");
+	
+	fprintf(pfileLog, "[%d-%d]R=%d; MaxAge=%d; Cached=%d, Rsp=%ld.%06ld, %ld.%06ld, %ld.%06ld\n", 
 			msg.owner,	\
 			msg.cnt,	\
 			msg.resource,	\
@@ -201,10 +132,9 @@ int dumpMessage(struct __message msg)
 			msg.proxy_started.tv_usec,	\
 			msg.proxy_finished.tv_sec%1000,	\
 			msg.proxy_finished.tv_usec
-		);
-#endif		
-		fclose(pfileLog);
-	}
+	);
+
+	fclose(pfileLog);
 	
 	return 0;
 }
@@ -235,9 +165,6 @@ int addObserver0(int iId, int iFd, unsigned int uiResource, unsigned int uiReqIn
 	addTimeValue(&(pNew->tSched), tNow, tB);
 	pNew->tSched.tv_usec = pNew->tSched.tv_usec/(DELAY_PROXY_TIMESLICE*1000)*(DELAY_PROXY_TIMESLICE*1000);
 
-	//printf("tNow=%3ld.%06ld\n", tNow.tv_sec, tNow.tv_usec);
-	//printf("pNew->tSched=%3ld.%06ld\n", pNew->tSched.tv_sec, pNew->tSched.tv_usec);
-		
 	if(g_Resource1.next == NULL)
 	{
 		g_Resource1.next = pNew;
@@ -438,21 +365,6 @@ int addObserver1(int iId, int iFd, unsigned int uiResource, unsigned int uiReqIn
 	pNew->uiReqInterval = uiReqInterval;
 	pNew->next = NULL;
 	
-	//struct timeval tNow, tB;
-	//tB.tv_sec = uiReqInterval/1000;
-	//tB.tv_usec = (uiReqInterval%1000)*1000;
-	
-	//
-	//TODO: take look later
-	//
-	//struct timeval tNow;
-	//gettimeofday(&tNow, NULL);
-	//addTimeValue(&(pNew->tSched), tNow, tB);
-	//pNew->tSched.tv_usec = pNew->tSched.tv_usec/(DELAY_PROXY_TIMESLICE*1000)*(DELAY_PROXY_TIMESLICE*1000);
-	
-	//printf("tNow=%3ld.%06ld\n", tNow.tv_sec, tNow.tv_usec);
-	//printf("pNew->tSched=%3ld.%06ld\n", pNew->tSched.tv_sec, pNew->tSched.tv_usec);
-	
 	setTimeValue(&(pNew->tSched), 0, 0);
 	getSchedTime(&(pNew->tSched), tNow, uiReqInterval);
 		
@@ -582,7 +494,6 @@ int isCachedDataValid(struct timeval curTime)
 	}
 
 	return ret;
-	//return 0;
 }
 
 int updateCache(struct timeval curTime)
@@ -601,7 +512,6 @@ int updateCache(struct timeval curTime)
 	}
 	
 	//printf("%s:g_Resource1.uiCachedAge=%d\n", __func__, g_Resource1.uiCachedAge);
-
 	return ret;
 }
 
@@ -618,7 +528,6 @@ int handleMessage(struct __message *arg)
 
 	//TODO: wait until other request responded
 	pthread_mutex_lock(&m_lock);
-//printf("+++\n");
 	
 	gettimeofday(&tStart, NULL);
 
@@ -630,6 +539,10 @@ int handleMessage(struct __message *arg)
 			addObserver0(msg.owner, msg.iFd, msg.resource, msg.req_dur);
 		}
 		else if(g_uiCacheAlgorithm == 1)
+		{
+			addObserver1(msg.owner, msg.iFd, msg.resource, msg.req_dur, tStart);
+		}
+		else if(g_uiCacheAlgorithm == 2)
 		{
 			addObserver1(msg.owner, msg.iFd, msg.resource, msg.req_dur, tStart);
 		}
@@ -732,7 +645,7 @@ void dumpCurrentTime()
 	
 	gettimeofday(&timeCurrent, NULL);
 }
-#if 1
+
 int getResourceFromServer(struct __message *msg)
 {
 	struct __message resp;
@@ -765,7 +678,82 @@ int getResourceFromServer(struct __message *msg)
 			
 	return 0;
 }
-#endif
+
+//struct timeval g_tMin;
+
+int getEarlistSchedTime(struct timeval *ptMin, struct timeval curTime)
+{
+	int ret = 0;
+	struct __client *pClient;
+	
+	pClient = g_Resource1.next;
+		
+	while(pClient)
+	{
+		//if(pClient->tSched)
+		{
+			if(isBiggerThan(*ptMin, pClient->tSched))
+			{
+				setTimeValue(ptMin, pClient->tSched.tv_sec, pClient->tSched.tv_usec);
+			}
+		}
+				
+		pClient = pClient->next;
+	}
+
+	return ret;
+}
+
+int setSchedTime(struct timeval tMin)
+{
+	int ret = 0;
+	struct __client *pClient;
+	struct timeval tRet;
+	
+	pClient = g_Resource1.next;
+		
+	while(pClient)
+	{
+		if(isEqualTo(pClient->tSched, tMin))
+		{
+			;
+			//printf("Equal!\n");
+		}
+		else
+		{
+			subTimeValue(&tRet, pClient->tSched, tMin);
+			addTimeValue(&tRet, tRet, tRet);
+			
+			struct timeval tB;
+			tB.tv_sec = pClient->uiReqInterval/1000;
+			tB.tv_usec = (pClient->uiReqInterval%1000)*1000;
+			
+			//printf("NOT Equal!\n");
+			
+			if(isBiggerThan(tB, tRet))
+			{
+				setTimeValue(&(pClient->tSched), tMin.tv_sec , tMin.tv_usec);
+			}
+		}
+					
+		pClient = pClient->next;
+	}
+
+	return ret;
+}
+
+int setSchedule(struct timeval curTime)
+{
+	struct timeval tRet;
+
+	setTimeValue(&tRet, 0x7FFFFFFF, 0x7FFFFFFF);
+		
+	//TODO: get the earliest schedule time
+	getEarlistSchedTime(&tRet, curTime);
+				
+	//TODO: reschedule
+	setSchedTime(tRet);
+}
 
 void *pthreadWatchResource(void *arg)
 {
@@ -784,13 +772,13 @@ void *pthreadWatchResource(void *arg)
 			while(client)
 			{
 				gettimeofday(&tStart, NULL);
-//printf("%s:+++\n", __func__);			
+
 				//TODO: find scheduled client
 				if(isBiggerThan(tStart, client->tSched))
 				{
 					struct __message msg;
 					struct timeval tEnd;
-#if 1	
+
 					//TODO: if cached resource is valid, then use it
 					if(g_uiCacheMode && isCachedDataValid(tStart) )
 					{
@@ -811,7 +799,6 @@ void *pthreadWatchResource(void *arg)
 						gettimeofday(&tEnd, NULL);
 					}
 					else
-#endif
 					{
 						//TODO: init cache
 						initCache();
@@ -859,10 +846,18 @@ void *pthreadWatchResource(void *arg)
 			//updateClient();
 			
 			//TODO: 
-			if(isBiggerThan(tStart, g_Resource1.tBaseTime))
+			if(g_uiCacheAlgorithm == 1)
 			{
-				updateBaseTime();
+				if(isBiggerThan(tStart, g_Resource1.tBaseTime))
+				{
+					//TODO: update check point
+					updateBaseTime();
+				}
 			}
+			else if(g_uiCacheAlgorithm == 2)
+			{
+				setSchedule(tStart);
+			}			
 			
 			usleep(5*1000);
 		}	//if(g_Resource1.iClientNumber)
