@@ -4,4 +4,4 @@ all:
 	gcc -o resource_client resource_client5.c
 
 clean:
-	rm -f *.bak *.o
+	rm -f resouce_server resource_proxy resource_client *.bak *.o *.log
