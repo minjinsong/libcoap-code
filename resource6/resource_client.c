@@ -19,6 +19,8 @@
 #include <time.h>
 #include "resource.h"
 
+int g_monMode = RESOURCE_CMD_GET;
+int g_monInterval = 1000;
 unsigned int g_uiOwner;
 int g_iLog = 0;
 
@@ -124,7 +126,7 @@ int dumpMessage(struct __message msg)
 #else
 	printf("[%d-%d]R=%d, MaxAge=%d, Cached=%d, Rsp=%ld.%06ldms, %ld.%06ld, %ld.%06ld \n", 
 		msg.owner,	\
-		msg.cnt,	\
+		g_monInterval,	\
 		msg.resource,	\
 		msg.uiMaxAge,	\
 		iCached,	\
@@ -165,7 +167,7 @@ int dumpMessage(struct __message msg)
 #else
 		fprintf(pfileLog, "[%d-%d]R=%d; MaxAge=%d; Cached=%d, Rsp=%ld.%06ld, %ld.%06ld, %ld.%06ld\n", 
 			msg.owner,	\
-			msg.cnt,	\
+			g_monInterval,	\
 			msg.resource,	\
 			msg.uiMaxAge,	\
 			iCached,	\
@@ -195,9 +197,6 @@ int handleMessage(struct __message msg)
 	
 	return 0;
 }
-
-int g_monMode = RESOURCE_CMD_GET;
-int g_monInterval = 1000;
 
 int main(int argc, char *argv[])
 {

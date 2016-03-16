@@ -704,6 +704,53 @@ int getEarlistSchedTime(struct timeval *ptMin, struct timeval curTime)
 	return ret;
 }
 
+#if 1
+int setSchedTime(struct timeval tMin)
+{
+	int ret = 0;
+	struct __client *pClient;
+	struct timeval tRet;
+	
+	pClient = g_Resource1.next;
+		
+	while(pClient)
+	{
+		struct timeval tCPaddMA; 
+		struct timeval tMaxAge; 
+		setTimeValue(&tMaxAge, g_Resource1.uiMaxAge/1000, (g_Resource1.uiMaxAge%1000)*1000);
+		addTimeValue(&tCPaddMA, g_Resource1.tBaseTime, tMaxAge);
+		
+		//if(isEqualTo(pClient->tSched, tMin))
+		if(isBiggerThan(pClient->tSched, tCPaddMA))
+		{
+			struct timeval tTemp;
+			struct timeval tAllow;
+			subTimeValue(&tTemp, pClient->tSched, tCPaddMA);
+			
+			setTimeValue(&tAllow, (pClient->uiReqInterval/5)/1000, ((pClient->uiReqInterval/5)%1000)*1000);
+			if(isBiggerThan(tAllow, tTemp))
+			{
+				//TODO: set new schedule time
+				setTimeValue(&(pClient->tSched), tCPaddMA.tv_sec , tCPaddMA.tv_usec);
+			}
+			else
+			{
+				//TODO: leave it for next processing
+				;
+			}
+		}
+		else
+		{
+			;
+			//printf("nothing to do!\n");
+		}
+					
+		pClient = pClient->next;
+	}
+
+	return ret;
+}
+#else
 int setSchedTime(struct timeval tMin)
 {
 	int ret = 0;
@@ -741,6 +788,7 @@ int setSchedTime(struct timeval tMin)
 
 	return ret;
 }
+#endif
 
 int setSchedule(struct timeval curTime)
 {
@@ -750,6 +798,9 @@ int setSchedule(struct timeval curTime)
 		
 	//TODO: get the earliest schedule time
 	getEarlistSchedTime(&tRet, curTime);
+	
+	//TODO: set base time
+	setTimeValue(&g_Resource1.tBaseTime, tRet.tv_sec, tRet.tv_usec);
 				
 	//TODO: reschedule
 	setSchedTime(tRet);
@@ -856,7 +907,14 @@ void *pthreadWatchResource(void *arg)
 			}
 			else if(g_uiCacheAlgorithm == 2)
 			{
-				setSchedule(tStart);
+				struct timeval tCPaddMA; 
+				struct timeval tMaxAge; 
+				setTimeValue(&tMaxAge, g_Resource1.uiMaxAge/1000, (g_Resource1.uiMaxAge%1000)*1000);
+				addTimeValue(&tCPaddMA, g_Resource1.tBaseTime, tMaxAge);				
+				if(isBiggerThan(tStart, tCPaddMA))
+				{
+					setSchedule(tStart);
+				}
 			}			
 			
 			usleep(5*1000);

@@ -151,3 +151,5 @@ int isEqualTo(struct timeval timeA, struct timeval timeB)
 	}
 	return ret;	
 }
+
+int getEarlistSchedTime(struct timeval *ptMin, struct timeval curTime);
