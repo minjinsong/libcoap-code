@@ -34,7 +34,7 @@ static int g_iExit = 0;
 static int g_piFdMax;
 static int g_iClientMax = 0;
 static int g_piSocketClient[MAX_SOCK] = {0, };
-static char g_strProxyLogName[128] = {0, };
+static char g_strProxyLog[128] = {0, };
 
 pthread_mutex_t m_lock;
 static int g_iTotal = 0;
@@ -118,7 +118,7 @@ int dumpMessage(struct __message msg)
 			tRecv2.tv_usec
 	);
 	
-	FILE *pfileLog = fopen(g_strProxyLogName, "a");
+	FILE *pfileLog = fopen(g_strProxyLog, "a");
 	
 	fprintf(pfileLog, "[%d-%d]R=%d; MaxAge=%d; Cached=%d, Rsp=%ld.%06ld, %ld.%06ld, %ld.%06ld\n", 
 			msg.owner,	\
@@ -720,18 +720,20 @@ int setSchedTime(struct timeval tMin)
 		setTimeValue(&tMaxAge, g_Resource1.uiMaxAge/1000, (g_Resource1.uiMaxAge%1000)*1000);
 		addTimeValue(&tCPaddMA, g_Resource1.tBaseTime, tMaxAge);
 		
-		//if(isEqualTo(pClient->tSched, tMin))
 		if(isBiggerThan(pClient->tSched, tCPaddMA))
 		{
 			struct timeval tTemp;
 			struct timeval tAllow;
 			subTimeValue(&tTemp, pClient->tSched, tCPaddMA);
 			
-			setTimeValue(&tAllow, (pClient->uiReqInterval/5)/1000, ((pClient->uiReqInterval/5)%1000)*1000);
+			//setTimeValue(&tAllow, (pClient->uiReqInterval/5)/1000, ((pClient->uiReqInterval/5)%1000)*1000);
+			setTimeValue(&tAllow, (pClient->uiReqInterval/4)/1000, ((pClient->uiReqInterval/4)%1000)*1000);
+			//setTimeValue(&tAllow, (pClient->uiReqInterval/2)/1000, ((pClient->uiReqInterval/2)%1000)*1000);
 			if(isBiggerThan(tAllow, tTemp))
 			{
 				//TODO: set new schedule time
-				setTimeValue(&(pClient->tSched), tCPaddMA.tv_sec , tCPaddMA.tv_usec);
+				//setTimeValue(&(pClient->tSched), tCPaddMA.tv_sec , tCPaddMA.tv_usec);
+				setTimeValue(&(pClient->tSched), g_Resource1.tBaseTime.tv_sec , g_Resource1.tBaseTime.tv_usec);
 			}
 			else
 			{
@@ -1033,7 +1035,7 @@ return;//while(1);
 	pthread_t threadId = 0;
 	pthread_create(&threadId, NULL, pthreadWatchResource, (void *)NULL);
 	
-	sprintf(g_strProxyLogName, "/tmp/proxy_%d.log", (int)getpid());
+	sprintf(g_strProxyLog, "/tmp/proxy_%d.log", (int)getpid());
 
 	while(1)
 	{

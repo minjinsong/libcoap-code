@@ -30,9 +30,84 @@ int g_iClientMax = 0;
 int g_piSocketClient[MAX_SOCK] = {0, };
 //char *escapechar = "exit";
 static int g_iCount = 0;
+static char g_strServerLog[128] = {0, };
 
 
 pthread_mutex_t m_lock;
+
+
+int dumpMessage(struct __message msg)
+{
+	struct timeval timeTrans;
+	struct timeval tSend1;
+	struct timeval tSend2;
+	struct timeval tServer;
+	struct timeval tRecv2;
+	struct timeval tRecv1;
+	int iCached;
+	
+	
+	//TODO: dump response
+	if(msg.server_started.tv_sec)
+		subTimeValue(&timeTrans, msg.server_finished, msg.server_started);	
+
+	if( (msg.server_started.tv_sec>0) && (msg.server_finished.tv_sec>0) )
+	{
+		subTimeValue(&tSend2, msg.server_started, msg.server_started);
+		subTimeValue(&tServer, msg.server_finished, msg.server_started);
+		subTimeValue(&tRecv2, msg.server_finished, msg.server_finished);
+		iCached = 0;
+	}
+	else
+	{
+		tSend2.tv_sec = 0;
+		tSend2.tv_usec = 0;
+		tServer.tv_sec = 0;
+		tServer.tv_usec = 0;
+		tRecv2.tv_sec = 0;
+		tRecv2.tv_usec = 0;
+		iCached = 1;
+	}
+	
+	subTimeValue(&tRecv1, msg.client_finished, msg.server_finished);
+	
+	printf("[%d-%d]R=%d; MaxAge=%d; Cached=%d, Rsp=%ld.%06ld;(%ld.%06ld)(%ld.%06ld)(%ld.%06ld)\n", 
+			msg.owner,	\
+			msg.cnt,	\
+			msg.resource,	\
+			msg.uiMaxAge,	\
+			iCached,	\
+			timeTrans.tv_sec%1000,	\
+			timeTrans.tv_usec,	\
+			tSend2.tv_sec%1000,	\
+			tSend2.tv_usec,	\
+			tServer.tv_sec%1000,	\
+			tServer.tv_usec,	\
+			tRecv2.tv_sec%1000,	\
+			tRecv2.tv_usec
+	);
+	
+	FILE *pfileLog = fopen(g_strServerLog, "a");
+	
+	fprintf(pfileLog, "[%d-%d]R=%d; MaxAge=%d; Cached=%d, Rsp=%ld.%06ld, %ld.%06ld, %ld.%06ld\n", 
+			msg.owner,	\
+			msg.cnt,	\
+			msg.resource,	\
+			msg.uiMaxAge,	\
+			iCached,	\
+			timeTrans.tv_sec%1000,	\
+			timeTrans.tv_usec,	\
+			msg.server_started.tv_sec%1000,	\
+			msg.server_started.tv_usec,	\
+			msg.server_finished.tv_sec%1000,	\
+			msg.server_finished.tv_usec
+	);
+
+	fclose(pfileLog);
+	
+	return 0;
+}
+
 
 int handleMessage(struct __message *arg)
 {
@@ -76,6 +151,10 @@ int handleMessage(struct __message *arg)
 	
 	int temp = send(msg.iFd, &msg, sizeof(struct __message), 0);
 	
+#if 1
+	dumpMessage(msg);
+#endif	
+	
 	return 0;
 }
 
@@ -97,6 +176,8 @@ int main(int argc , char *argv[])
 		
 		struct __message rcv = { 0x0, };
 		struct __message trans = { 0x0, };
+		
+		sprintf(g_strServerLog, "/tmp/server_%d.log", (int)getpid());
 		
 		pthread_mutex_init(&m_lock, NULL);
 		
