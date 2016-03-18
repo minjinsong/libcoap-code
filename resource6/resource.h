@@ -7,15 +7,16 @@
 
 #define MAXLINE									(1024)
 #define MAX_SOCK 								(1024)
-#define RESOURCE_DEFAULT_DELAY	(200)				//ms
+#define RESOURCE_DEFAULT_DELAY	(100)				//ms
+#define RESOURCE_MAX_AGE				(RESOURCE_DEFAULT_DELAY)				//ms
 #define RESOURCE_DELAY_TRUST		(1.1)					//
 #define RESOURCE_DELAY_WATCHER	(1000)				//1ms
 #define DELAY_PROXY_RX					(5)
 #define DELAY_PROXY_TX					(3)
 #define DELAY_PROXY_TIMESLICE		(10)		//ms
 //#define DELAY_PROXY_PROCESS		()
-#define DELAY_SERVER_RX					(12)		//ms
-#define DELAY_SERVER_TX					(8)			//ms
+#define DELAY_SERVER_RX					(0)//(12)		//ms
+#define DELAY_SERVER_TX					(0)//(8)			//ms
 #define DELAY_SERVER_PROCESS		(RESOURCE_DEFAULT_DELAY)
 
 #define CLIENT_LOG_NAME					"/tmp/client.log"

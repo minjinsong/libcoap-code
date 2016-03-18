@@ -726,8 +726,9 @@ int setSchedTime(struct timeval tMin)
 			struct timeval tAllow;
 			subTimeValue(&tTemp, pClient->tSched, tCPaddMA);
 			
-			//setTimeValue(&tAllow, (pClient->uiReqInterval/5)/1000, ((pClient->uiReqInterval/5)%1000)*1000);
-			setTimeValue(&tAllow, (pClient->uiReqInterval/4)/1000, ((pClient->uiReqInterval/4)%1000)*1000);
+			//setTimeValue(&tAllow, (pClient->uiReqInterval/10)/1000, ((pClient->uiReqInterval/10)%1000)*1000);
+			setTimeValue(&tAllow, (pClient->uiReqInterval/5)/1000, ((pClient->uiReqInterval/5)%1000)*1000);
+			//setTimeValue(&tAllow, (pClient->uiReqInterval/4)/1000, ((pClient->uiReqInterval/4)%1000)*1000);
 			//setTimeValue(&tAllow, (pClient->uiReqInterval/2)/1000, ((pClient->uiReqInterval/2)%1000)*1000);
 			if(isBiggerThan(tAllow, tTemp))
 			{
@@ -743,8 +744,7 @@ int setSchedTime(struct timeval tMin)
 		}
 		else
 		{
-			;
-			//printf("nothing to do!\n");
+			setTimeValue(&(pClient->tSched), g_Resource1.tBaseTime.tv_sec , g_Resource1.tBaseTime.tv_usec);
 		}
 					
 		pClient = pClient->next;
