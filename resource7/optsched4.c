@@ -162,7 +162,7 @@ unsigned int getLCM(int a, int b)
 	return (a*b)/getGCD(a, b);
 }
 
-int getTimeDuration()
+unsigned int getTimeDuration()
 {
 	int i;
 	unsigned int iResult = arr[0][0];
@@ -173,12 +173,12 @@ int getTimeDuration()
 			break;
 			
 		iResult = getLCM(iResult, arr[i][0]);
-		//if(iResult > TIME_MAX)
-		//	iResult = iResult / 2;
+		/*
 		while(iResult > TIME_MAX)
 		{
 			iResult = iResult / 2;
 		}
+		*/
 		printf("iRsult=%d\n", iResult);
 	}
 
@@ -486,16 +486,18 @@ void process()
 		
 		addTempQueue(iBaseTime);
 		
-		if( (iNow>=TIME_MIN) && isCycled())
-		{
-			printf("End using Cycled!(%d)\n", iNow);
-			break;
-		}
-		else if((iNow>TIME_MAX) && (iNow>=giEndTime) )
+		//if( (iNow>=TIME_MIN) && isCycled())
+		if((iNow>TIME_MAX) && (iNow>=giEndTime) )
 		{
 			printf("End using LCM!!(%d)\n", iNow);
 			break;
 		}
+		else if(isCycled())
+		{
+			printf("End using Cycled!(%d)\n", iNow);
+			break;
+		}
+		
 		
 		i++;
 	}
