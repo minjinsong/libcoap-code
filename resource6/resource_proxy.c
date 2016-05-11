@@ -460,7 +460,15 @@ int initCache()
 int setCache(struct __message msg, struct timeval tNow)
 {
 	g_Resource1.iCachedResource = msg.resource;
-	g_Resource1.uiMaxAge = msg.uiMaxAge;
+#if 0
+	if(g_uiCacheAlgorithm == 2)
+		g_Resource1.uiMaxAge = DELAY_PROXY_TIMESLICE;
+	else
+		g_Resource1.uiMaxAge = RESOURCE_DEFAULT_DELAY;
+#else
+		//g_Resource1.uiMaxAge = msg.uiMaxAge;
+		g_Resource1.uiMaxAge = RESOURCE_DEFAULT_DELAY;
+#endif		
 	//g_Resource1.uiCachedAge = 0;
 	setTimeValue(&(g_Resource1.tCachedTime), tNow.tv_sec, tNow.tv_usec);
 	
@@ -726,10 +734,13 @@ int setSchedTime(struct timeval tMin)
 			struct timeval tAllow;
 			subTimeValue(&tTemp, pClient->tSched, tCPaddMA);
 			
+			setTimeValue(&tAllow, (pClient->uiReqInterval*2/10)/1000, ((pClient->uiReqInterval*2/10)%1000)*1000);
+			//setTimeValue(&tAllow, (pClient->uiReqInterval*3/10)/1000, ((pClient->uiReqInterval*3/10)%1000)*1000);
 			//setTimeValue(&tAllow, (pClient->uiReqInterval/10)/1000, ((pClient->uiReqInterval/10)%1000)*1000);
-			setTimeValue(&tAllow, (pClient->uiReqInterval/5)/1000, ((pClient->uiReqInterval/5)%1000)*1000);
+			//setTimeValue(&tAllow, (pClient->uiReqInterval/5)/1000, ((pClient->uiReqInterval/5)%1000)*1000);
 			//setTimeValue(&tAllow, (pClient->uiReqInterval/4)/1000, ((pClient->uiReqInterval/4)%1000)*1000);
 			//setTimeValue(&tAllow, (pClient->uiReqInterval/2)/1000, ((pClient->uiReqInterval/2)%1000)*1000);
+			//setTimeValue(&tAllow, 0, 10*1000);
 			if(isBiggerThan(tAllow, tTemp))
 			{
 				//TODO: set new schedule time

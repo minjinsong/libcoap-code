@@ -7,7 +7,7 @@
 
 #define MAXLINE									(1024)
 #define MAX_SOCK 								(1024)
-#define RESOURCE_DEFAULT_DELAY	(100)				//ms
+#define RESOURCE_DEFAULT_DELAY	(10)				//ms
 #define RESOURCE_MAX_AGE				(RESOURCE_DEFAULT_DELAY)				//ms
 #define RESOURCE_DELAY_TRUST		(1.1)					//
 #define RESOURCE_DELAY_WATCHER	(1000)				//1ms
